@@ -1,0 +1,20 @@
+# Generated test and analysis outputs
+Tests/build/
+tmp/
+
+# Compiler and linker artifacts
+*.o
+*.obj
+*.elf
+*.exe
+*.map
+*.hex
+*.bin
+
+# Editor and OS metadata
+.vs/
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+*.user

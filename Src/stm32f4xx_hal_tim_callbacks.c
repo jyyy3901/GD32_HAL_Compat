@@ -1,0 +1,25 @@
+#include "stm32f4xx_hal.h"
+
+#define TIM_WEAK_VOID(NAME) \
+    __weak void NAME(TIM_HandleTypeDef *htim) { UNUSED(htim); }
+
+TIM_WEAK_VOID(HAL_TIM_Base_MspInit)
+TIM_WEAK_VOID(HAL_TIM_Base_MspDeInit)
+TIM_WEAK_VOID(HAL_TIM_OC_MspInit)
+TIM_WEAK_VOID(HAL_TIM_OC_MspDeInit)
+TIM_WEAK_VOID(HAL_TIM_PWM_MspInit)
+TIM_WEAK_VOID(HAL_TIM_PWM_MspDeInit)
+TIM_WEAK_VOID(HAL_TIM_IC_MspInit)
+TIM_WEAK_VOID(HAL_TIM_IC_MspDeInit)
+TIM_WEAK_VOID(HAL_TIM_OnePulse_MspInit)
+TIM_WEAK_VOID(HAL_TIM_OnePulse_MspDeInit)
+TIM_WEAK_VOID(HAL_TIM_PeriodElapsedCallback)
+TIM_WEAK_VOID(HAL_TIM_PeriodElapsedHalfCpltCallback)
+TIM_WEAK_VOID(HAL_TIM_OC_DelayElapsedCallback)
+TIM_WEAK_VOID(HAL_TIM_IC_CaptureCallback)
+TIM_WEAK_VOID(HAL_TIM_IC_CaptureHalfCpltCallback)
+TIM_WEAK_VOID(HAL_TIM_PWM_PulseFinishedCallback)
+TIM_WEAK_VOID(HAL_TIM_PWM_PulseFinishedHalfCpltCallback)
+TIM_WEAK_VOID(HAL_TIM_TriggerCallback)
+TIM_WEAK_VOID(HAL_TIM_TriggerHalfCpltCallback)
+TIM_WEAK_VOID(HAL_TIM_ErrorCallback)
