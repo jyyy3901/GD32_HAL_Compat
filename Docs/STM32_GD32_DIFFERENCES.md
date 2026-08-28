@@ -1,5 +1,7 @@
 # STM32F401VEH6 与 GD32F403RET6 差异基线
 
+> 0.9.0 的权威实例表见 `STM32_GD32_MAPPING.md`；本文保留硬件调研细节。
+
 ## 1. 结论与适用范围
 
 本文只针对以下组合：
@@ -31,7 +33,7 @@ GD32F403 与 STM32F401 都采用 Cortex-M4，但不能视为寄存器兼容器�
 | 封装 | `V` = LQFP100 | `R` = LQFP64 | 不是引脚兼容替换，必须重新做 Pin/PCB 审核 |
 | GPIO | LQFP100 可用端口/引脚较多 | 数据手册列出 51 个 GPIO | `GPIOE` 等原工程用法不能默认保留 |
 | ADC | ADC1，12 位 | ADC0/1/2，LQFP64 每单元最多 16 外部通道集合 | Instance 与触发映射均需转换 |
-| 串口 | USART1/2/6、UART4/5 等按具体型号 | USART0/1/2 + UART3/4 | 编号整体偏移，UART3/4 功能是精简子集 |
+| 串口 | USART1/2/6 | USART0/1/2 + UART3/4 | 兼容层只映射 USART1/2/6；UART3/4 为 GD32 原生扩展 |
 | DMA | DMA1/DMA2，各 8 Stream，带 Channel 选择/FIFO | DMA0 7 Channel，DMA1 5 Channel，固定请求 OR 映射 | Handle 不能直接保存 STM32 Stream 指针 |
 | TIMER | TIM1、TIM2-5、TIM9-11；TIM2/TIM5 为 32 位 | TIMER0-13 均为 16 位，分高级/通用 L0/L1/L2/基本型 | 32 位周期与级联必须重构 |
 
@@ -45,7 +47,7 @@ GD32 型号资源来自 Datasheet Rev3.1 表 2-2；F403RET6 对应 `RE` 列：51
 | GPIO | GPIO + AFIO | 中 | GD32 使用 CTL0/CTL1、OCTL、AFIO remap；不是 MODER/AFRL/AFRH |
 | RCC | RCU | 高 | 门控、HSI/HSE、当前/既有时钟切换和查询已转换；PLL 参数仍须原生配置 |
 | NVIC/SysTick/MPU | CMSIS Cortex-M4 | 低 | 使用 GD32 CMSIS 的 IRQn_Type 和 Core API |
-| UART/USART | USART0-2/UART3-4 | 中/高 | 轮询可组合；IT/DMA 必须重建 Handle 状态机和错误清除顺序 |
+| UART/USART | USART0-2；UART3-4 原生扩展 | 中/高 | 轮询/IT/DMA 重建 Handle 状态机和错误清除顺序 |
 | TIM | TIMER | 高 | 编号偏移、计数宽度、ITIx 关系、TRGO 和 DMA 请求映射需查表转换 |
 | ADC | ADC | 高 | GD32 有校准/硬件过采样；触发源、序列、EOC/DMA 行为不同 |
 | DMA | DMA | 高 | Stream+Channel+FIFO 模型变为固定 Channel；无 1:1 Instance |
@@ -89,17 +91,14 @@ STM32F401 GPIO 使用独立的 MODER、OTYPER、OSPEEDR、PUPDR 和 AFRL/AFRH。
 |---|---|---|
 | USART1 | USART0 | APB2 |
 | USART2 | USART1 | APB1 |
-| USART3 | USART2 | APB1 |
-| UART4 | UART3 | APB1，精简功能 |
-| UART5 | UART4 | APB1，精简功能 |
+| USART6 | USART2 | APB1 |
 
 GD32 User Manual §17 明确 USART0/1/2 为完整实现；UART3/4 不支持同步、Smartcard、CTS/RTS 等若干功能。轮询收发可由 `usart_flag_get()`、`usart_data_transmit()`、`usart_data_receive()` 和 `HAL_GetTick()` 组合。IT/DMA 必须维护 `pTxBuffPtr/TxXferCount/pRxBuffPtr/RxXferCount/gState/RxState/ErrorCode`，并严格处理 PERR/FERR/NERR/ORERR/RBNE/TBE/TC。
 
 第二阶段 UART 设计还采用以下硬件约束：
 
 - GD32F403 USART 异步接收固定为 16 倍过采样；STM32 的 `UART_OVERSAMPLING_8` 无等价配置，初始化时必须返回 `HAL_ERROR`。
-- GD32 UART3/4 不支持 CTS/RTS；对应 STM32 UART4/5 Handle 请求硬件流控时必须拒绝。
-- GD32 User Manual 指出 UART4 不支持 DMA；对应 STM32 `UART5` 的 DMA API 已实现为明确失败。
+- GD32 UART3/4 不作为 STM32F401 兼容 Instance 暴露；其精简功能与 UART4 无 DMA 的限制由原生模块自行处理。
 - PERR、FERR、NERR、ORERR 和 IDLEF 不能用普通写零函数随意清除，必须先读 `USART_STAT0`，再读 `USART_DATA`。
 - USART0 使用 APB2，USART1/2、UART3/4 使用 APB1；SPL 波特率发生器固定按 16 倍过采样计算，Port 层必须检查分频值是否落入 BAUD 寄存器范围。
 
@@ -132,7 +131,7 @@ Phase 3 使用不透明的 `GD32_DMA0_CHANNEL0..6`、`GD32_DMA1_CHANNEL0..4` 作
 | DMA1 CH3 | SDIO、TIMER4_CH1、TIMER6_UP、DAC_CH1 |
 | DMA1 CH4 | ADC2、UART3_TX、TIMER4_CH0、TIMER7_CH1 |
 
-同一 Channel 的多个请求在硬件中先 OR 再进入 DMA。兼容层的 Handle 独占可阻止两个 DMA Handle 同时启动；UART Phase 4 与 TIMER Phase 5 均增加 Parent、方向、位宽、固定 Channel/请求令牌校验，并在错误和 Stop 路径配对关闭父外设 DMA 请求。TIMER normal 完成与 STM HAL 一致，仅恢复状态并回调，继续运行最后一个 ARR/CCR，应用随后调用 `HAL_TIM_*_Stop_DMA()` 停止请求/通道。ADC 仍须在对应阶段实现相同协同。UART4 没有 DMA 请求。
+同一 Channel 的多个请求在硬件中先 OR 再进入 DMA。兼容层的 Handle 独占可阻止两个 DMA Handle 同时启动；UART、TIMER 与 ADC 均执行 Parent、方向、位宽、固定 Channel/请求令牌校验，并在错误和 Stop 路径配对关闭父外设 DMA 请求。TIMER normal 完成与 STM HAL 一致，仅恢复状态并回调，继续运行最后一个 ARR/CCR，应用随后调用 `HAL_TIM_*_Stop_DMA()` 停止请求/通道。GD32 原生 UART4 没有 DMA 请求，兼容层不为其伪造 STM32F401 Instance。
 
 ## 9. TIMER 和硬件级联
 

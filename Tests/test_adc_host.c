@@ -1,4 +1,5 @@
 #include "stm32f4xx_hal.h"
+#include "gd32_hal_port.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -52,6 +53,55 @@ uint32_t HAL_GetTick(void)
 int GD32_HAL_ADC_IsInstance(uint32_t adc_address)
 {
     return adc_address == GD32_HAL_ADC0_ADDRESS;
+}
+
+int GD32_HAL_ADC_MapSTM32Trigger(uint32_t source,
+                                 uint32_t edge,
+                                 GD32_HAL_ADCTrigger *trigger)
+{
+    if (trigger == NULL)
+    {
+        return -1;
+    }
+    if (source == ADC_SOFTWARE_START)
+        *trigger = GD32_HAL_ADC_TRIGGER_SOFTWARE;
+    else if (source == ADC_EXTERNALTRIGCONV_T1_CC1)
+        *trigger = GD32_HAL_ADC_TRIGGER_TIMER0_CH0;
+    else if (source == ADC_EXTERNALTRIGCONV_T1_CC2)
+        *trigger = GD32_HAL_ADC_TRIGGER_TIMER0_CH1;
+    else if (source == ADC_EXTERNALTRIGCONV_T1_CC3)
+        *trigger = GD32_HAL_ADC_TRIGGER_TIMER0_CH2;
+    else if (source == ADC_EXTERNALTRIGCONV_T2_CC2)
+        *trigger = GD32_HAL_ADC_TRIGGER_TIMER1_CH1;
+    else if (source == ADC_EXTERNALTRIGCONV_T3_TRGO)
+        *trigger = GD32_HAL_ADC_TRIGGER_TIMER2_TRGO;
+    else if (source == ADC_EXTERNALTRIGCONV_T4_CC4)
+        *trigger = GD32_HAL_ADC_TRIGGER_TIMER3_CH3;
+    else if (source == ADC_EXTERNALTRIGCONV_Ext_IT11)
+        *trigger = GD32_HAL_ADC_TRIGGER_EXTI11;
+    else
+        return -1;
+
+    if (((*trigger == GD32_HAL_ADC_TRIGGER_SOFTWARE) &&
+         (edge != ADC_EXTERNALTRIGCONVEDGE_NONE)) ||
+        ((*trigger != GD32_HAL_ADC_TRIGGER_SOFTWARE) &&
+         (edge != ADC_EXTERNALTRIGCONVEDGE_RISING)))
+    {
+        return -2;
+    }
+    return 0;
+}
+
+int GD32_HAL_ADC_MapSTM32SampleTime(uint32_t source, uint8_t *target)
+{
+    static const uint8_t map[] = {1U, 3U, 3U, 6U, 7U, 7U, 7U};
+
+    if ((target == NULL) || (source >= ADC_SAMPLETIME_480CYCLES))
+    {
+        return -1;
+    }
+    *target = map[source];
+    return 0;
 }
 
 int GD32_HAL_ADC_Configure(uint32_t adc_address,

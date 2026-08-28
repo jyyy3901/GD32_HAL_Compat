@@ -1,5 +1,7 @@
 # STM32F401 HAL 到 GD32F403 SPL API Mapping
 
+> 0.9.0 的权威兼容矩阵见 `STM32_GD32_MAPPING.md` 与 `LIMITATION.md`；本文件保留更细的 API 研发记录。
+
 ## 1. 状态定义
 
 - `已实现`：已有代码，且已通过 ARM Cortex-M4 目标对象严格编译。
@@ -97,11 +99,11 @@
 
 | STM32 HAL API/宏 | GD32 实现基础 | 策略 | 状态 |
 |---|---|---|---|
-| __HAL_RCC_GPIOA-D_CLK_ENABLE/DISABLE | `rcu_periph_clock_enable/disable` | 直接宏 | 已实现 |
+| __HAL_RCC_GPIOA-D_CLK_ENABLE/DISABLE | Port resource -> `rcu_periph_clock_enable/disable` | 语义 Instance 解析 | 已实现 |
 | __HAL_RCC_DMA1/2_CLK_ENABLE/DISABLE | RCU_DMA0/1 | 编号转换 | 已实现 |
-| __HAL_RCC_USART1/2/3、UART4/5_CLK_ENABLE | RCU_USART0/1/2、UART3/4 | 编号转换 | 已实现 |
-| __HAL_RCC_TIM1..14_CLK_ENABLE/DISABLE | RCU_TIMER0..13 | 编号转换，不表示功能等价 | 已实现 |
-| __HAL_RCC_ADC1/2/3_CLK_ENABLE | RCU_ADC0/1/2 | 编号转换 | 已实现 |
+| __HAL_RCC_USART1/2/6_CLK_ENABLE | RCU_USART0/1/2 | 资源表转换 | 已实现 |
+| __HAL_RCC_TIM1..5、TIM9..11_CLK_ENABLE/DISABLE | RCU_TIMER0..4、TIMER8..10 | 资源表转换 | 已实现 |
+| __HAL_RCC_ADC1_CLK_ENABLE | RCU_ADC0 | 资源表转换 | 已实现 |
 | __HAL_RCC_I2C1/2_CLK_ENABLE | RCU_I2C0/1 | 编号转换 | 已实现 |
 | __HAL_RCC_I2C3_CLK_ENABLE | 无目标实例 | 使用点触发明确的未定义类型编译错误 | 不支持 |
 | __HAL_RCC_SPI1/2/3_CLK_ENABLE | RCU_SPI0/1/2 | 编号转换 | 已实现 |
@@ -133,9 +135,9 @@
 | HAL_UART_Abort*CpltCallback | weak | 是 | 是 | 是 | 否 | 中 | 已实现 |
 | HAL_UARTEx_ReceiveToIdle* | IDLEF + count/DMA counter | 否 | 是 | 是 | 可选 | 高 | 计划 |
 | HalfDuplex/LIN/MultiProcessor | GD32 USART mode API | 部分可组合 | 是 | 是 | 可选 | 高 | 计划 |
-| UART3/4 CTS/RTS/同步/Smartcard | 硬件不支持 | 否 | - | - | - | - | 不支持 |
+| GD32 UART3/4 原生扩展 | 不伪装成 STM32F401 Instance | 否 | - | - | - | - | 使用 SPL |
 
-第四阶段固定策略：STM32 `USART1/2/3、UART4/5` 分别映射到 GD32 `USART0/1/2、UART3/4`；`UART_OVERSAMPLING_8` 和 UART3/4 硬件流控在初始化时返回 `HAL_ERROR`。UART DMA 只接受 User Manual 固定映射及通过 `__HAL_LINKDMA()` 绑定的 Handle；普通 TX 必须在 DMA full 后继续等待 TC，circular 模式保持 BUSY。GD32 UART4 无 DMA，因此兼容层 `UART5` 的 DMA 启动明确失败。
+0.9.0 固定策略：STM32F401 `USART1/2/6` 分别映射到 GD32 `USART0/1/2`；`UART_OVERSAMPLING_8` 返回 `HAL_ERROR`。UART DMA 只接受 User Manual 固定映射及通过 `__HAL_LINKDMA()` 绑定的 Handle；普通 TX 必须在 DMA full 后继续等待 TC，circular 模式保持 BUSY。GD32 UART3/4 只作原生 SPL 扩展。
 
 ## 7. USART 同步模式
 
@@ -183,7 +185,7 @@
 | __HAL_TIM_SET/GET_AUTORELOAD/PRESCALER | CAR/PSC | 否，Port 封装 | 否 | 否 | 中 | 已实现/16 位检查 |
 | TIM2/TIM5 32 位计数 | GD32 TIMER1/4 仅 16 位 | 无等价 | - | - | 高 | 不支持 |
 
-第五阶段固定策略：公共 `TIM1..TIM14` 仅是不透明 Instance，应用不能访问 STM32 寄存器字段。所有目标 TIMER 均按 16 位检查；DMA 使用 32 位内存/外设传输宽度保存 `uint32_t` HAL buffer 布局，同时逐项拒绝大于 `0xFFFF` 的输出数据。F401 ITR 先解析源定时器再查 GD ITI：TIM1 全部、TIM2 ITR0/2/3、TIM3 全部、TIM4 ITR0/1/2、TIM5 ITR0/1/2、TIM9 ITR0/1 可保持语义；保留项及 TIM9 ITR2/3 的 OC 专用连接返回 `HAL_ERROR`。
+第五阶段固定策略：公共 `TIM1..5/TIM9..11` 是不透明 Instance，应用不能访问 STM32 寄存器字段。所有目标 TIMER 均按 16 位检查；DMA 使用 32 位内存/外设传输宽度保存 `uint32_t` HAL buffer 布局，同时逐项拒绝大于 `0xFFFF` 的输出数据。F401 ITR 先解析源定时器再查 GD ITI：TIM1 全部、TIM2 ITR0/2/3、TIM3 全部、TIM4 ITR0/1/2、TIM5 ITR0/1/2、TIM9 ITR0/1 可保持语义；保留项及 TIM9 ITR2/3 的 OC 专用连接返回 `HAL_ERROR`。
 
 ## 10. ADC
 

@@ -1,4 +1,5 @@
 #include "stm32f4xx_hal.h"
+#include "gd32_hal_port.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -118,9 +119,18 @@ static DMA_HandleTypeDef mock_dma_handle(DMA_Stream_TypeDef *instance,
                                          uint32_t mode)
 {
     DMA_HandleTypeDef hdma;
+    const GD32_HAL_Resource *resource;
 
     memset(&hdma, 0, sizeof(hdma));
     hdma.Instance = instance;
+    resource = GD32_HAL_ResolveInstance((uintptr_t)instance,
+                                        GD32_HAL_RESOURCE_DMA);
+    assert(resource != NULL);
+    hdma.GD32_RESOURCE = resource;
+    hdma.GD32_INSTANCE = resource->gd32_instance;
+    hdma.gd32_dma_periph = resource->gd32_periph;
+    hdma.gd32_dma_channel = resource->gd32_channel;
+    hdma.GD32_IRQ_NUMBER = resource->gd32_irq;
     hdma.Init.Channel = request;
     hdma.Init.Direction = direction;
     hdma.Init.PeriphInc = DMA_PINC_DISABLE;
@@ -466,16 +476,18 @@ static void test_init_and_guards(void)
     UART_HandleTypeDef huart;
 
     mock_reset();
-    assert((int)USART1_IRQn == GD32_HAL_USART0_IRQn_VALUE);
-    assert((int)USART2_IRQn == GD32_HAL_USART1_IRQn_VALUE);
-    assert((int)USART3_IRQn == GD32_HAL_USART2_IRQn_VALUE);
-    assert((int)UART4_IRQn == GD32_HAL_UART3_IRQn_VALUE);
-    assert((int)UART5_IRQn == GD32_HAL_UART4_IRQn_VALUE);
-    assert((uint32_t)(uintptr_t)USART1 == GD32_HAL_USART0_ADDRESS);
-    assert((uint32_t)(uintptr_t)UART5 == GD32_HAL_UART4_ADDRESS);
+    assert((int)USART1_IRQn == STM32_HAL_IRQ_USART1);
+    assert((int)USART2_IRQn == STM32_HAL_IRQ_USART2);
+    assert((int)USART6_IRQn == STM32_HAL_IRQ_USART6);
+    assert((uintptr_t)USART1 == STM32_UART_INSTANCE_1);
+    assert((uintptr_t)USART6 == STM32_UART_INSTANCE_6);
+    assert((uint32_t)(uintptr_t)USART1 != GD32_HAL_USART0_ADDRESS);
 
     huart = mock_handle(USART1);
     assert(HAL_UART_Init(&huart) == HAL_OK);
+    assert(huart.GD32_INSTANCE == GD32_HAL_USART0_ADDRESS);
+    assert(huart.GD32_IRQ_NUMBER == STM32_HAL_IRQ_USART1);
+    assert(huart.GD32_RESOURCE != NULL);
     assert(mock_configure_count == 1U);
     assert(mock_config.baud_rate == 115200U);
     assert(mock_config.word_length == 8U);
@@ -488,10 +500,10 @@ static void test_init_and_guards(void)
     assert(HAL_UART_Init(&huart) == HAL_ERROR);
     assert(mock_last_port_error == GD32_HAL_PORT_ERROR_UART_OVERSAMPLING_UNSUPPORTED);
 
-    huart = mock_handle(UART4);
-    huart.Init.HwFlowCtl = UART_HWCONTROL_RTS;
+    huart = mock_handle((USART_TypeDef *)(uintptr_t)
+                        STM32_HAL_INSTANCE_TOKEN(0x02U, 0x04U));
     assert(HAL_UART_Init(&huart) == HAL_ERROR);
-    assert(mock_last_port_error == GD32_HAL_PORT_ERROR_UART_FLOW_CONTROL_UNSUPPORTED);
+    assert(mock_last_port_error == GD32_HAL_PORT_ERROR_INVALID_INSTANCE);
 }
 
 static void test_polling(void)
@@ -582,7 +594,7 @@ static void test_interrupt_transfers(void)
     uint8_t rx[2] = {0U};
 
     mock_reset();
-    huart = mock_handle(USART3);
+    huart = mock_handle(USART6);
     assert(HAL_UART_Init(&huart) == HAL_OK);
 
     assert(HAL_UART_Transmit_IT(&huart, tx, 2U) == HAL_OK);
@@ -923,16 +935,6 @@ static void test_dma_errors_abort_and_guards(void)
     assert(mock_dma_tx_active == 0);
     assert(huart.gState == HAL_UART_STATE_READY);
 
-    huart = mock_handle(UART5);
-    assert(HAL_UART_Init(&huart) == HAL_OK);
-    hdmatx = mock_dma_handle(GD32_DMA0_CHANNEL3,
-                             GD32_DMA_REQUEST_USART0_TX,
-                             DMA_MEMORY_TO_PERIPH,
-                             DMA_NORMAL);
-    __HAL_LINKDMA(&huart, hdmatx, hdmatx);
-    assert(HAL_UART_Transmit_DMA(&huart, data, 4U) == HAL_ERROR);
-    assert(mock_last_port_error == GD32_HAL_PORT_ERROR_UART_DMA_UNSUPPORTED);
-
     huart = mock_handle(USART1);
     assert(HAL_UART_Init(&huart) == HAL_OK);
     hdmatx = mock_dma_handle(GD32_DMA0_CHANNEL4,
@@ -957,7 +959,7 @@ static void test_deinit(void)
     UART_HandleTypeDef huart;
 
     mock_reset();
-    huart = mock_handle(UART5);
+    huart = mock_handle(USART6);
     assert(HAL_UART_Init(&huart) == HAL_OK);
     assert(HAL_UART_DeInit(&huart) == HAL_OK);
     assert(mock_deinit_count == 1U);

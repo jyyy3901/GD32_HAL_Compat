@@ -14,6 +14,7 @@ uint32_t mock_irq_enabled[8];
 
 static uint32_t mock_port_init_count;
 static uint32_t mock_port_deinit_count;
+static const uint32_t mock_uid[3] = {0x11223344U, 0x55667788U, 0x99AABBCCU};
 
 void SystemCoreClockUpdate(void)
 {
@@ -31,6 +32,11 @@ int GD32_HAL_PortDeInit(void)
     return 0;
 }
 
+uint32_t GD32_HAL_ReadUIDWord(uint8_t index)
+{
+    return (index < 3U) ? mock_uid[index] : 0U;
+}
+
 static void test_hal_and_tick(void)
 {
     GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_INVALID_INSTANCE, 0x1234U);
@@ -42,6 +48,9 @@ static void test_hal_and_tick(void)
     assert(HAL_NVIC_GetPriorityGrouping() == NVIC_PRIORITYGROUP_4);
     assert(SysTick->LOAD == 167999U);
     assert(HAL_GetTickFreq() == HAL_TICK_FREQ_1KHZ);
+    assert(HAL_GetUIDw0() == mock_uid[0]);
+    assert(HAL_GetUIDw1() == mock_uid[1]);
+    assert(HAL_GetUIDw2() == mock_uid[2]);
 
     GD32_HAL_SysTickIRQHandler();
     assert(HAL_GetTick() == 1U);

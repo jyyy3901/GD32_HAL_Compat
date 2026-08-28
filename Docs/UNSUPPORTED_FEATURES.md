@@ -1,5 +1,7 @@
 # 未支持与有限支持功能
 
+> 0.9.0 的权威限制见 `LIMITATION.md`；本文件保留详细研发记录。
+
 ## 1. 规则
 
 - 不允许未实现函数返回 HAL_OK。
@@ -81,12 +83,12 @@ DMA HAL 只管理 DMA Channel 自身。UART、TIMER、ADC 与 SPI 已分别配�
 | IT TX/RX | 已实现独立 `gState/RxState`、计数、IRQ 和 weak Callback | 待真实 IRQ/错误注入验证 |
 | PERR/FERR/NERR/ORERR | 按 enable 条件设置 ErrorCode；ORE 终止接收 | 按 STAT0 后 DATA 的顺序清除 |
 | `UART_OVERSAMPLING_8` | 初始化返回 HAL_ERROR | GD32F403 固定 16 倍过采样 |
-| UART3/4 CTS/RTS | 初始化返回 HAL_ERROR | 目标硬件不支持 |
+| GD32 UART3/4 | 不暴露成 STM32F401 Instance | 作为 GD32 原生 SPL 扩展 |
 | UART DMA normal/circular | 已实现 TX/RX、half/full、Pause/Resume/Stop | normal TX 在 DMA full 后继续等待 USART TC；circular 保持 BUSY |
 | UART/DMA Handle 绑定 | 必须 `__HAL_LINKDMA()`，并校验方向、8/16 位宽度、固定 Channel/请求令牌 | 不匹配返回 HAL_ERROR，禁止静默接错请求 |
 | DMA/UART error 与 Abort | 关闭 USART request，停止并释放相关 DMA Channel，再恢复 UART 状态/回调 | `HAL_DMA_Abort_IT()` 当前为硬件停机后的同步回调语义 |
-| GD32 UART4 DMA | `UART5` 的 DMA 启动返回 HAL_ERROR | User Manual 明确 UART4 不支持 DMA |
-| 同步/Smartcard/可配置数据极性 | 当前不提供 | UART3/4 无对应硬件能力；USART0/1/2 留待独立 USART HAL |
+| GD32 UART4 DMA | 兼容层不提供假别名 | User Manual 明确 UART4 不支持 DMA |
+| 同步/Smartcard/可配置数据极性 | 当前不提供 | USART0/1/2 留待独立 USART HAL；UART3/4 能力更少 |
 
 ## 8. ADC 有限支持
 

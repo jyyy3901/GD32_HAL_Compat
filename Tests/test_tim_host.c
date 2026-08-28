@@ -1,4 +1,5 @@
 #include "stm32f4xx_hal.h"
+#include "gd32_hal_port.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>

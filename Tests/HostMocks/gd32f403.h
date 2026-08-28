@@ -12,6 +12,13 @@ typedef enum
 {
     SysTick_IRQn = -1,
     TEST_IRQn = 0,
+    DMA0_Channel0_IRQn = 11,
+    DMA0_Channel1_IRQn = 12,
+    DMA0_Channel2_IRQn = 13,
+    DMA0_Channel3_IRQn = 14,
+    DMA0_Channel4_IRQn = 15,
+    DMA0_Channel5_IRQn = 16,
+    DMA0_Channel6_IRQn = 17,
     ADC0_1_IRQn = 18,
     TIMER0_BRK_TIMER8_IRQn = 24,
     TIMER0_UP_TIMER9_IRQn = 25,
@@ -38,8 +45,46 @@ typedef enum
     UART3_IRQn = 52,
     UART4_IRQn = 53,
     TIMER5_IRQn = 54,
-    TIMER6_IRQn = 55
+    TIMER6_IRQn = 55,
+    DMA1_Channel0_IRQn = 56,
+    DMA1_Channel1_IRQn = 57,
+    DMA1_Channel2_IRQn = 58,
+    DMA1_Channel3_IRQn = 59,
+    DMA1_Channel4_IRQn = 60
 } IRQn_Type;
+
+/* Resource-map-only clock identifiers used by host tests. */
+#define RCU_GPIOA  0x01U
+#define RCU_GPIOB  0x02U
+#define RCU_GPIOC  0x03U
+#define RCU_GPIOD  0x04U
+#define RCU_USART0 0x10U
+#define RCU_USART1 0x11U
+#define RCU_USART2 0x12U
+#define RCU_UART3  0x13U
+#define RCU_UART4  0x14U
+#define RCU_DMA0   0x20U
+#define RCU_DMA1   0x21U
+#define RCU_TIMER0 0x30U
+#define RCU_TIMER1 0x31U
+#define RCU_TIMER2 0x32U
+#define RCU_TIMER3 0x33U
+#define RCU_TIMER4 0x34U
+#define RCU_TIMER5 0x35U
+#define RCU_TIMER6 0x36U
+#define RCU_TIMER7 0x37U
+#define RCU_TIMER8 0x38U
+#define RCU_TIMER9 0x39U
+#define RCU_TIMER10 0x3AU
+#define RCU_TIMER11 0x3BU
+#define RCU_TIMER12 0x3CU
+#define RCU_TIMER13 0x3DU
+#define RCU_ADC0   0x40U
+#define RCU_I2C0   0x50U
+#define RCU_I2C1   0x51U
+#define RCU_SPI0   0x60U
+#define RCU_SPI1   0x61U
+#define RCU_SPI2   0x62U
 
 typedef struct
 {

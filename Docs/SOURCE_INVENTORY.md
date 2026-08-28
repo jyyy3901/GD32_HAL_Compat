@@ -1,5 +1,7 @@
 # 官方资料与源码清单
 
+> 0.9.0 已将兼容层目录改为 `Include/Source/Port`；本文中的调研记录仍保留原始官方目录名称。
+
 ## 1. 扫描范围
 
 - `GD32F403RET6/`
@@ -57,7 +59,7 @@ CMSIS Core 位于 `GD32F403RET6/CMSIS/`；目标工程必须只选择一种编�
 
 ## 5. 已审计的 STM32 HAL 模块
 
-下列模块均检查了 `Inc/` 声明和 `Src/` 实现；带 Ex 的模块也纳入 API Mapping：
+下列模块均检查了 `Include/` 声明和 `Source/` 实现；带 Ex 的模块也纳入 API Mapping：
 
 - Core：`stm32f4xx_hal.[ch]`、`stm32f4xx_hal_def.h`、`stm32f4xx_hal_conf_template.h`。
 - GPIO/Cortex/RCC：`stm32f4xx_hal_gpio*`、`stm32f4xx_hal_cortex*`、`stm32f4xx_hal_rcc*`。

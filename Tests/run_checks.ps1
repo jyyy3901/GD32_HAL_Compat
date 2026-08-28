@@ -15,7 +15,7 @@ New-Item -ItemType Directory -Force -Path $armBuild | Out-Null
 
 $armIncludes = @(
     '-I', (Join-Path $PSScriptRoot 'ArmShims'),
-    '-I', (Join-Path $project 'Inc'),
+    '-I', (Join-Path $project 'Include'),
     '-I', (Join-Path $project 'Port'),
     '-I', (Join-Path $workspace 'GD32F403RET6'),
     '-I', (Join-Path $workspace 'GD32F403RET6\CMSIS'),
@@ -24,40 +24,42 @@ $armIncludes = @(
 )
 
 $compatSources = @(
-    (Join-Path $project 'Src\stm32f4xx_hal.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_gpio.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_cortex.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_dma.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_uart.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_uart_callbacks.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_tim.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_tim_ex.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_tim_callbacks.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_adc.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_adc_callbacks.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_i2c.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_i2c_callbacks.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_spi.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_spi_callbacks.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_rcc.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_rcc_callbacks.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_exti.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_flash.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_flash_ex.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_flash_callbacks.c'),
-    (Join-Path $project 'Port\gd32_hal_port.c'),
-    (Join-Path $project 'Port\gd32_hal_dma_port.c'),
-    (Join-Path $project 'Port\gd32_hal_uart_port.c'),
-    (Join-Path $project 'Port\gd32_hal_timer_port.c'),
-    (Join-Path $project 'Port\gd32_hal_timer_itr.c'),
-    (Join-Path $project 'Port\gd32_hal_adc_port.c'),
-    (Join-Path $project 'Port\gd32_hal_i2c_port.c'),
-    (Join-Path $project 'Port\gd32_hal_spi_port.c'),
-    (Join-Path $project 'Port\gd32_hal_rcc_port.c'),
-    (Join-Path $project 'Port\gd32_hal_exti_port.c'),
-    (Join-Path $project 'Port\gd32_hal_flash_port.c'),
-    (Join-Path $project 'Port\gd32_hal_tick.c'),
-    (Join-Path $project 'Port\gd32_hal_irq.c')
+    (Join-Path $project 'Source\stm32f4xx_hal.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_gpio.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_cortex.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_dma.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_uart.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_uart_callbacks.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_tim.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_tim_ex.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_tim_callbacks.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_adc.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_adc_callbacks.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_i2c.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_i2c_callbacks.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_spi.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_spi_callbacks.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_rcc.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_rcc_callbacks.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_exti.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_flash.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_flash_ex.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_flash_callbacks.c'),
+    (Join-Path $project 'Port\gd32_core_port.c'),
+    (Join-Path $project 'Port\gd32_gpio_port.c'),
+    (Join-Path $project 'Port\gd32_instance_map.c'),
+    (Join-Path $project 'Port\gd32_dma_port.c'),
+    (Join-Path $project 'Port\gd32_uart_port.c'),
+    (Join-Path $project 'Port\gd32_timer_port.c'),
+    (Join-Path $project 'Port\stm32_timer_trigger_map.c'),
+    (Join-Path $project 'Port\gd32_adc_port.c'),
+    (Join-Path $project 'Port\gd32_i2c_port.c'),
+    (Join-Path $project 'Port\gd32_spi_port.c'),
+    (Join-Path $project 'Port\gd32_rcc_port.c'),
+    (Join-Path $project 'Port\gd32_exti_port.c'),
+    (Join-Path $project 'Port\gd32_flash_port.c'),
+    (Join-Path $project 'Port\gd32_tick_port.c'),
+    (Join-Path $project 'Port\gd32_irq_port.c')
 )
 
 foreach ($source in $compatSources) {
@@ -191,11 +193,12 @@ Write-Output 'FLASH ARM weak callback symbols: PASS'
 $timLinkBuild = Join-Path $armBuild 'tim_link'
 New-Item -ItemType Directory -Force -Path $timLinkBuild | Out-Null
 $timLinkSources = @(
-    (Join-Path $project 'Src\stm32f4xx_hal_tim.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_tim_ex.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_tim_callbacks.c'),
-    (Join-Path $project 'Port\gd32_hal_timer_port.c'),
-    (Join-Path $project 'Port\gd32_hal_timer_itr.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_tim.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_tim_ex.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_tim_callbacks.c'),
+    (Join-Path $project 'Port\gd32_timer_port.c'),
+    (Join-Path $project 'Port\stm32_timer_trigger_map.c'),
+    (Join-Path $project 'Port\gd32_instance_map.c'),
     (Join-Path $PSScriptRoot 'target_tim_link_smoke.c'),
     (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_timer.c'),
     (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_rcu.c')
@@ -218,7 +221,7 @@ for ($attempt = 0; $attempt -lt 3; ++$attempt) {
     if (Test-Path -LiteralPath $timLinkElf) {
         Remove-Item -LiteralPath $timLinkElf -Force
     }
-    $timLinkOutput = & $ldLld -m armelf -e TargetSmoke --gc-sections @timLinkObjects -o $timLinkElf 2>&1
+    $timLinkOutput = & $ldLld -m armelf --threads=1 -e TargetSmoke --gc-sections @timLinkObjects -o $timLinkElf 2>&1
     $timLinkExit = $LASTEXITCODE
     if ($timLinkExit -eq 0) { break }
 }
@@ -236,13 +239,15 @@ Write-Output 'TIM official GD32 SPL target link: PASS'
 $adcLinkBuild = Join-Path $armBuild 'adc_link'
 New-Item -ItemType Directory -Force -Path $adcLinkBuild | Out-Null
 $adcLinkSources = @(
-    (Join-Path $project 'Src\stm32f4xx_hal.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_dma.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_adc.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_adc_callbacks.c'),
-    (Join-Path $project 'Port\gd32_hal_port.c'),
-    (Join-Path $project 'Port\gd32_hal_dma_port.c'),
-    (Join-Path $project 'Port\gd32_hal_adc_port.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_dma.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_adc.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_adc_callbacks.c'),
+    (Join-Path $project 'Port\gd32_core_port.c'),
+    (Join-Path $project 'Port\gd32_dma_port.c'),
+    (Join-Path $project 'Port\gd32_adc_port.c'),
+    (Join-Path $project 'Port\gd32_instance_map.c'),
+    (Join-Path $project 'Port\gd32_rcc_port.c'),
     (Join-Path $PSScriptRoot 'target_adc_link_smoke.c'),
     (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_adc.c'),
     (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_dma.c'),
@@ -267,7 +272,7 @@ for ($attempt = 0; $attempt -lt 3; ++$attempt) {
     if (Test-Path -LiteralPath $adcLinkElf) {
         Remove-Item -LiteralPath $adcLinkElf -Force
     }
-    $adcLinkOutput = & $ldLld -m armelf -e TargetSmoke --gc-sections @adcLinkObjects -o $adcLinkElf 2>&1
+    $adcLinkOutput = & $ldLld -m armelf --threads=1 -e TargetSmoke --gc-sections @adcLinkObjects -o $adcLinkElf 2>&1
     $adcLinkExit = $LASTEXITCODE
     if ($adcLinkExit -eq 0) { break }
 }
@@ -285,16 +290,18 @@ Write-Output 'ADC official GD32 SPL target link: PASS'
 $phase7LinkBuild = Join-Path $armBuild 'i2c_spi_link'
 New-Item -ItemType Directory -Force -Path $phase7LinkBuild | Out-Null
 $phase7LinkSources = @(
-    (Join-Path $project 'Src\stm32f4xx_hal.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_dma.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_i2c.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_i2c_callbacks.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_spi.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_spi_callbacks.c'),
-    (Join-Path $project 'Port\gd32_hal_port.c'),
-    (Join-Path $project 'Port\gd32_hal_dma_port.c'),
-    (Join-Path $project 'Port\gd32_hal_i2c_port.c'),
-    (Join-Path $project 'Port\gd32_hal_spi_port.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_dma.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_i2c.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_i2c_callbacks.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_spi.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_spi_callbacks.c'),
+    (Join-Path $project 'Port\gd32_core_port.c'),
+    (Join-Path $project 'Port\gd32_dma_port.c'),
+    (Join-Path $project 'Port\gd32_instance_map.c'),
+    (Join-Path $project 'Port\gd32_rcc_port.c'),
+    (Join-Path $project 'Port\gd32_i2c_port.c'),
+    (Join-Path $project 'Port\gd32_spi_port.c'),
     (Join-Path $PSScriptRoot 'target_i2c_spi_link_smoke.c'),
     (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_i2c.c'),
     (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_spi.c'),
@@ -319,7 +326,7 @@ for ($attempt = 0; $attempt -lt 3; ++$attempt) {
     if (Test-Path -LiteralPath $phase7LinkElf) {
         Remove-Item -LiteralPath $phase7LinkElf -Force
     }
-    $phase7LinkOutput = & $ldLld -m armelf -e TargetSmoke --gc-sections @phase7LinkObjects -o $phase7LinkElf 2>&1
+    $phase7LinkOutput = & $ldLld -m armelf --threads=1 -e TargetSmoke --gc-sections @phase7LinkObjects -o $phase7LinkElf 2>&1
     $phase7LinkExit = $LASTEXITCODE
     if ($phase7LinkExit -eq 0) { break }
 }
@@ -338,19 +345,19 @@ Write-Output 'I2C/SPI official GD32 SPL target link: PASS'
 $phase8LinkBuild = Join-Path $armBuild 'rcc_exti_flash_link'
 New-Item -ItemType Directory -Force -Path $phase8LinkBuild | Out-Null
 $phase8LinkSources = @(
-    (Join-Path $project 'Src\stm32f4xx_hal.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_cortex.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_rcc.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_rcc_callbacks.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_exti.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_flash.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_flash_ex.c'),
-    (Join-Path $project 'Src\stm32f4xx_hal_flash_callbacks.c'),
-    (Join-Path $project 'Port\gd32_hal_port.c'),
-    (Join-Path $project 'Port\gd32_hal_rcc_port.c'),
-    (Join-Path $project 'Port\gd32_hal_exti_port.c'),
-    (Join-Path $project 'Port\gd32_hal_flash_port.c'),
-    (Join-Path $project 'Port\gd32_hal_tick.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_cortex.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_rcc.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_rcc_callbacks.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_exti.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_flash.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_flash_ex.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_flash_callbacks.c'),
+    (Join-Path $project 'Port\gd32_core_port.c'),
+    (Join-Path $project 'Port\gd32_rcc_port.c'),
+    (Join-Path $project 'Port\gd32_exti_port.c'),
+    (Join-Path $project 'Port\gd32_flash_port.c'),
+    (Join-Path $project 'Port\gd32_tick_port.c'),
     (Join-Path $PSScriptRoot 'target_rcc_exti_flash_link_smoke.c'),
     (Join-Path $workspace 'GD32F403RET6\CMSIS\GD\GD32F403\Source\system_gd32f403.c'),
     (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_rcu.c'),
@@ -377,7 +384,7 @@ for ($attempt = 0; $attempt -lt 3; ++$attempt) {
     if (Test-Path -LiteralPath $phase8LinkElf) {
         Remove-Item -LiteralPath $phase8LinkElf -Force
     }
-    $phase8LinkOutput = & $ldLld -m armelf -e TargetSmoke --gc-sections `
+    $phase8LinkOutput = & $ldLld -m armelf --threads=1 -e TargetSmoke --gc-sections `
         @phase8LinkObjects -o $phase8LinkElf 2>&1
     $phase8LinkExit = $LASTEXITCODE
     if ($phase8LinkExit -eq 0) { break }
@@ -445,12 +452,29 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Output 'Clang Analyzer: PASS'
 
+$instanceMapHostExe = Join-Path $build 'test_instance_map_host.exe'
+& $gcc -std=c11 -Wall -Wextra -Werror `
+    -I (Join-Path $PSScriptRoot 'HostMocks') `
+    -I (Join-Path $project 'Include') `
+    -I (Join-Path $project 'Port') `
+    (Join-Path $project 'Port\gd32_instance_map.c') `
+    (Join-Path $PSScriptRoot 'test_instance_map_host.c') `
+    -o $instanceMapHostExe
+if ($LASTEXITCODE -ne 0) {
+    throw "Instance map host test build failed: $LASTEXITCODE"
+}
+& $instanceMapHostExe
+if ($LASTEXITCODE -ne 0) {
+    throw "Instance map host test failed: $LASTEXITCODE"
+}
+
 $hostExe = Join-Path $build 'test_gpio_host.exe'
 & $gcc -std=c11 -Wall -Wextra -Werror `
     -I (Join-Path $PSScriptRoot 'HostMocks') `
-    -I (Join-Path $project 'Inc') `
+    -I (Join-Path $project 'Include') `
     -I (Join-Path $project 'Port') `
-    (Join-Path $project 'Src\stm32f4xx_hal_gpio.c') `
+    (Join-Path $project 'Source\stm32f4xx_hal_gpio.c') `
+    (Join-Path $project 'Port\gd32_instance_map.c') `
     (Join-Path $PSScriptRoot 'test_gpio_host.c') `
     -o $hostExe
 if ($LASTEXITCODE -ne 0) {
@@ -465,12 +489,12 @@ if ($LASTEXITCODE -ne 0) {
 $coreHostExe = Join-Path $build 'test_core_host.exe'
 & $gcc -std=c11 -Wall -Wextra -Werror `
     -I (Join-Path $PSScriptRoot 'HostMocks') `
-    -I (Join-Path $project 'Inc') `
+    -I (Join-Path $project 'Include') `
     -I (Join-Path $project 'Port') `
-    (Join-Path $project 'Src\stm32f4xx_hal.c') `
-    (Join-Path $project 'Src\stm32f4xx_hal_cortex.c') `
-    (Join-Path $project 'Port\gd32_hal_tick.c') `
-    (Join-Path $project 'Port\gd32_hal_irq.c') `
+    (Join-Path $project 'Source\stm32f4xx_hal.c') `
+    (Join-Path $project 'Source\stm32f4xx_hal_cortex.c') `
+    (Join-Path $project 'Port\gd32_tick_port.c') `
+    (Join-Path $project 'Port\gd32_irq_port.c') `
     (Join-Path $PSScriptRoot 'test_core_host.c') `
     -o $coreHostExe
 if ($LASTEXITCODE -ne 0) {
@@ -485,9 +509,10 @@ if ($LASTEXITCODE -ne 0) {
 $uartHostExe = Join-Path $build 'test_uart_host.exe'
 & $gcc -std=c11 -Wall -Wextra -Werror `
     -I (Join-Path $PSScriptRoot 'HostMocks') `
-    -I (Join-Path $project 'Inc') `
+    -I (Join-Path $project 'Include') `
     -I (Join-Path $project 'Port') `
-    (Join-Path $project 'Src\stm32f4xx_hal_uart.c') `
+    (Join-Path $project 'Source\stm32f4xx_hal_uart.c') `
+    (Join-Path $project 'Port\gd32_instance_map.c') `
     (Join-Path $PSScriptRoot 'test_uart_host.c') `
     -o $uartHostExe
 if ($LASTEXITCODE -ne 0) {
@@ -502,9 +527,10 @@ if ($LASTEXITCODE -ne 0) {
 $dmaHostExe = Join-Path $build 'test_dma_host.exe'
 & $gcc -std=c11 -Wall -Wextra -Werror `
     -I (Join-Path $PSScriptRoot 'HostMocks') `
-    -I (Join-Path $project 'Inc') `
+    -I (Join-Path $project 'Include') `
     -I (Join-Path $project 'Port') `
-    (Join-Path $project 'Src\stm32f4xx_hal_dma.c') `
+    (Join-Path $project 'Source\stm32f4xx_hal_dma.c') `
+    (Join-Path $project 'Port\gd32_instance_map.c') `
     (Join-Path $PSScriptRoot 'test_dma_host.c') `
     -o $dmaHostExe
 if ($LASTEXITCODE -ne 0) {
@@ -519,9 +545,9 @@ if ($LASTEXITCODE -ne 0) {
 $dmaPortHostExe = Join-Path $build 'test_dma_port_host.exe'
 & $gcc -std=c11 -Wall -Wextra -Werror `
     -I (Join-Path $PSScriptRoot 'HostMocks') `
-    -I (Join-Path $project 'Inc') `
+    -I (Join-Path $project 'Include') `
     -I (Join-Path $project 'Port') `
-    (Join-Path $project 'Port\gd32_hal_dma_port.c') `
+    (Join-Path $project 'Port\gd32_dma_port.c') `
     (Join-Path $PSScriptRoot 'test_dma_port_host.c') `
     -o $dmaPortHostExe
 if ($LASTEXITCODE -ne 0) {
@@ -536,10 +562,11 @@ if ($LASTEXITCODE -ne 0) {
 $timHostExe = Join-Path $build 'test_tim_host.exe'
 & $gcc -std=c11 -Wall -Wextra -Werror `
     -I (Join-Path $PSScriptRoot 'HostMocks') `
-    -I (Join-Path $project 'Inc') `
+    -I (Join-Path $project 'Include') `
     -I (Join-Path $project 'Port') `
-    (Join-Path $project 'Src\stm32f4xx_hal_tim.c') `
-    (Join-Path $project 'Src\stm32f4xx_hal_tim_ex.c') `
+    (Join-Path $project 'Source\stm32f4xx_hal_tim.c') `
+    (Join-Path $project 'Source\stm32f4xx_hal_tim_ex.c') `
+    (Join-Path $project 'Port\gd32_instance_map.c') `
     (Join-Path $PSScriptRoot 'test_tim_host.c') `
     -o $timHostExe
 if ($LASTEXITCODE -ne 0) {
@@ -554,9 +581,10 @@ if ($LASTEXITCODE -ne 0) {
 $timItrHostExe = Join-Path $build 'test_tim_itr_host.exe'
 & $gcc -std=c11 -Wall -Wextra -Werror `
     -I (Join-Path $PSScriptRoot 'HostMocks') `
-    -I (Join-Path $project 'Inc') `
+    -I (Join-Path $project 'Include') `
     -I (Join-Path $project 'Port') `
-    (Join-Path $project 'Port\gd32_hal_timer_itr.c') `
+    (Join-Path $project 'Port\stm32_timer_trigger_map.c') `
+    (Join-Path $project 'Port\gd32_instance_map.c') `
     (Join-Path $PSScriptRoot 'test_tim_itr_host.c') `
     -o $timItrHostExe
 if ($LASTEXITCODE -ne 0) {
@@ -571,9 +599,10 @@ if ($LASTEXITCODE -ne 0) {
 $adcHostExe = Join-Path $build 'test_adc_host.exe'
 & $gcc -std=c11 -Wall -Wextra -Werror `
     -I (Join-Path $PSScriptRoot 'HostMocks') `
-    -I (Join-Path $project 'Inc') `
+    -I (Join-Path $project 'Include') `
     -I (Join-Path $project 'Port') `
-    (Join-Path $project 'Src\stm32f4xx_hal_adc.c') `
+    (Join-Path $project 'Source\stm32f4xx_hal_adc.c') `
+    (Join-Path $project 'Port\gd32_instance_map.c') `
     (Join-Path $PSScriptRoot 'test_adc_host.c') `
     -o $adcHostExe
 if ($LASTEXITCODE -ne 0) {
@@ -588,9 +617,10 @@ if ($LASTEXITCODE -ne 0) {
 $i2cHostExe = Join-Path $build 'test_i2c_host.exe'
 & $gcc -std=c11 -Wall -Wextra -Werror `
     -I (Join-Path $PSScriptRoot 'HostMocks') `
-    -I (Join-Path $project 'Inc') `
+    -I (Join-Path $project 'Include') `
     -I (Join-Path $project 'Port') `
-    (Join-Path $project 'Src\stm32f4xx_hal_i2c.c') `
+    (Join-Path $project 'Source\stm32f4xx_hal_i2c.c') `
+    (Join-Path $project 'Port\gd32_instance_map.c') `
     (Join-Path $PSScriptRoot 'test_i2c_host.c') `
     -o $i2cHostExe
 if ($LASTEXITCODE -ne 0) {
@@ -604,9 +634,10 @@ if ($LASTEXITCODE -ne 0) {
 $spiHostExe = Join-Path $build 'test_spi_host.exe'
 & $gcc -std=c11 -Wall -Wextra -Werror `
     -I (Join-Path $PSScriptRoot 'HostMocks') `
-    -I (Join-Path $project 'Inc') `
+    -I (Join-Path $project 'Include') `
     -I (Join-Path $project 'Port') `
-    (Join-Path $project 'Src\stm32f4xx_hal_spi.c') `
+    (Join-Path $project 'Source\stm32f4xx_hal_spi.c') `
+    (Join-Path $project 'Port\gd32_instance_map.c') `
     (Join-Path $PSScriptRoot 'test_spi_host.c') `
     -o $spiHostExe
 if ($LASTEXITCODE -ne 0) {
@@ -620,9 +651,9 @@ if ($LASTEXITCODE -ne 0) {
 $rccHostExe = Join-Path $build 'test_rcc_host.exe'
 & $gcc -std=c11 -Wall -Wextra -Werror `
     -I (Join-Path $PSScriptRoot 'HostMocks') `
-    -I (Join-Path $project 'Inc') `
+    -I (Join-Path $project 'Include') `
     -I (Join-Path $project 'Port') `
-    (Join-Path $project 'Src\stm32f4xx_hal_rcc.c') `
+    (Join-Path $project 'Source\stm32f4xx_hal_rcc.c') `
     (Join-Path $PSScriptRoot 'test_rcc_host.c') `
     -o $rccHostExe
 if ($LASTEXITCODE -ne 0) {
@@ -636,9 +667,9 @@ if ($LASTEXITCODE -ne 0) {
 $extiHostExe = Join-Path $build 'test_exti_host.exe'
 & $gcc -std=c11 -Wall -Wextra -Werror `
     -I (Join-Path $PSScriptRoot 'HostMocks') `
-    -I (Join-Path $project 'Inc') `
+    -I (Join-Path $project 'Include') `
     -I (Join-Path $project 'Port') `
-    (Join-Path $project 'Src\stm32f4xx_hal_exti.c') `
+    (Join-Path $project 'Source\stm32f4xx_hal_exti.c') `
     (Join-Path $PSScriptRoot 'test_exti_host.c') `
     -o $extiHostExe
 if ($LASTEXITCODE -ne 0) {
@@ -652,10 +683,10 @@ if ($LASTEXITCODE -ne 0) {
 $flashHostExe = Join-Path $build 'test_flash_host.exe'
 & $gcc -std=c11 -Wall -Wextra -Werror `
     -I (Join-Path $PSScriptRoot 'HostMocks') `
-    -I (Join-Path $project 'Inc') `
+    -I (Join-Path $project 'Include') `
     -I (Join-Path $project 'Port') `
-    (Join-Path $project 'Src\stm32f4xx_hal_flash.c') `
-    (Join-Path $project 'Src\stm32f4xx_hal_flash_ex.c') `
+    (Join-Path $project 'Source\stm32f4xx_hal_flash.c') `
+    (Join-Path $project 'Source\stm32f4xx_hal_flash_ex.c') `
     (Join-Path $PSScriptRoot 'test_flash_host.c') `
     -o $flashHostExe
 if ($LASTEXITCODE -ne 0) {

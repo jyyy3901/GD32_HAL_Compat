@@ -1,5 +1,7 @@
 # 实施计划与质量门
 
+> 本文件保留 0.8.0 阶段记录。0.9.0 当前方案以 `V0.8.0_REVIEW.md` 和 `ARCHITECTURE.md` 为准。
+
 ## 1. 开发基线
 
 - 第三方目录 `GD32F403RET6/` 与 `STM32F401VEH6/HAL库/` 只读。
@@ -13,7 +15,7 @@
 
 - 盘点两套官方 PDF、CMSIS、startup、system 和驱动文件。
 - 确认 GD32F403RET6 型号资源、封装边界、SPL V3.0.3。
-- 建立 `Inc/`、`Src/`、`Port/`、`Docs/`、`Tests/` 分层。
+- 建立 `Include/`、`Source/`、`Port/`、`Docs/`、`Tests/` 分层。
 - 建立差异、API Mapping、未支持机制和移植指南。
 
 质量门：所有硬件结论可回溯到本地官方资料或 SPL，不引用未确认的寄存器位。
@@ -42,7 +44,7 @@
 任务：
 
 - 定义 UART_InitTypeDef、UART_HandleTypeDef、HAL_UART_StateTypeDef、ErrorCode。
-- 建立 STM32 USART1/2/3、UART4/5 到 GD32 USART0/1/2、UART3/4 的 Instance 表。
+- 建立 STM32F401 USART1/2/6 到 GD32 USART0/1/2 的 Instance 表；GD32 UART3/4 只作原生扩展。
 - 实现 Init/DeInit、polling TX/RX 和 Timeout。
 - 实现独立 TX/RX IT 状态机、错误路径、Abort、IRQ 和 weak Callback。
 - 确认 UART3/4 精简功能并在初始化时拒绝不可用选项。
@@ -70,9 +72,9 @@
 
 ## 6. Phase 4：UART DMA（代码完成，待板测）
 
-实现：UART Handle 与 DMA Handle 双向绑定；固定 Channel/请求令牌、方向、宽度和 Parent 校验；TX/RX normal/circular；DMA 完成后 USART TC；Pause/Resume/Stop；UART/DMA error；同步硬件 Abort 与 Callback 状态一致性。GD32 UART4（兼容层 UART5）DMA 明确返回 `HAL_ERROR`。
+实现：UART Handle 与 DMA Handle 双向绑定；固定 Channel/请求令牌、方向、宽度和 Parent 校验；TX/RX normal/circular；DMA 完成后 USART TC；Pause/Resume/Stop；UART/DMA error；同步硬件 Abort 与 Callback 状态一致性。
 
-已通过的代码质量门：TX/RX normal/circular、half/full Callback、TX DMA 完成后 TC 收尾、DMA error、UART error、Pause/Resume/Stop、普通/暂停态 Abort、全双工错误释放、重复启动 HAL_BUSY、错误 Parent/通道/请求拒绝、UART5 DMA 拒绝、ARM 严格编译和 Clang Analyzer。
+已通过的代码质量门：TX/RX normal/circular、half/full Callback、TX DMA 完成后 TC 收尾、DMA error、UART error、Pause/Resume/Stop、普通/暂停态 Abort、全双工错误释放、重复启动 HAL_BUSY、错误 Parent/通道/请求拒绝、ARM 严格编译和 Clang Analyzer。
 
 待板级质量门：USART0/1/2、UART3 的 TX/RX normal/circular 实际搬运；half/full/error IRQ；TC 时序；总线压力；Pause/Resume/Stop/Abort；错误注入；所有固定 Channel 请求映射。
 

@@ -1,4 +1,5 @@
 #include "stm32f4xx_hal.h"
+#include "gd32_hal_port.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -194,9 +195,13 @@ static void test_package_and_feature_guards(void)
     before = mock_error_count;
     mock_last_init_pins = 0U;
     HAL_GPIO_Init(GPIOA, &init);
+    assert(mock_error_count == before);
+    assert(mock_last_mode == GD32_HAL_GPIO_MODE_AF_PP);
+    assert(mock_last_init_pins == GPIO_PIN_1);
+
+    init.Alternate = 16U;
+    HAL_GPIO_Init(GPIOA, &init);
     assert(mock_error_count == before + 1U);
-    assert(mock_last_error == GD32_HAL_PORT_ERROR_AF_SELECTION_REQUIRES_NATIVE_INIT);
-    assert(mock_last_init_pins == 0U);
 }
 
 int main(void)
