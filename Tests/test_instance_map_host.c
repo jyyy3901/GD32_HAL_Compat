@@ -25,40 +25,61 @@ int GD32_HAL_RCC_SetCommonClock(GD32_HAL_RCCCommonClock clock, int enable)
     return 0;
 }
 
-static void AssertMapping(uintptr_t token,
+static void AssertMapping(uintptr_t semantic,
+                          uintptr_t public_instance,
                           GD32_HAL_ResourceKind kind,
                           uint32_t target)
 {
-    const GD32_HAL_Resource *resource = GD32_HAL_ResolveInstance(token, kind);
+    const GD32_HAL_Resource *resource =
+        GD32_HAL_ResolveInstance(public_instance, kind);
 
     assert(resource != NULL);
-    assert(resource->stm32_instance == token);
+    assert(resource->semantic_id == semantic);
+    assert(resource->stm32_instance == public_instance);
     assert(resource->gd32_instance == target);
-    assert(token != (uintptr_t)target);
 }
 
 int main(void)
 {
-    AssertMapping(STM32_GPIO_INSTANCE_A, GD32_HAL_RESOURCE_GPIO,
+    AssertMapping(STM32_GPIO_SEMANTIC_A, STM32_GPIO_INSTANCE_A,
+                  GD32_HAL_RESOURCE_GPIO,
                   GD32_HAL_GPIOA_ADDRESS);
-    AssertMapping(STM32_UART_INSTANCE_1, GD32_HAL_RESOURCE_UART,
+    AssertMapping(STM32_UART_SEMANTIC_1, STM32_UART_INSTANCE_1,
+                  GD32_HAL_RESOURCE_UART,
                   GD32_HAL_USART0_ADDRESS);
-    AssertMapping(STM32_UART_INSTANCE_2, GD32_HAL_RESOURCE_UART,
+    AssertMapping(STM32_UART_SEMANTIC_2, STM32_UART_INSTANCE_2,
+                  GD32_HAL_RESOURCE_UART,
                   GD32_HAL_USART1_ADDRESS);
-    AssertMapping(STM32_UART_INSTANCE_6, GD32_HAL_RESOURCE_UART,
+    AssertMapping(STM32_UART_SEMANTIC_6, STM32_UART_INSTANCE_6,
+                  GD32_HAL_RESOURCE_UART,
                   GD32_HAL_USART2_ADDRESS);
-    AssertMapping(STM32_TIM_INSTANCE_1, GD32_HAL_RESOURCE_TIMER,
+    AssertMapping(STM32_TIM_SEMANTIC_1, STM32_TIM_INSTANCE_1,
+                  GD32_HAL_RESOURCE_TIMER,
                   GD32_HAL_TIMER0_ADDRESS);
-    AssertMapping(STM32_TIM_INSTANCE_5, GD32_HAL_RESOURCE_TIMER,
+    AssertMapping(STM32_TIM_SEMANTIC_5, STM32_TIM_INSTANCE_5,
+                  GD32_HAL_RESOURCE_TIMER,
                   GD32_HAL_TIMER4_ADDRESS);
-    AssertMapping(STM32_TIM_INSTANCE_9, GD32_HAL_RESOURCE_TIMER,
+    AssertMapping(STM32_TIM_SEMANTIC_9, STM32_TIM_INSTANCE_9,
+                  GD32_HAL_RESOURCE_TIMER,
                   GD32_HAL_TIMER8_ADDRESS);
-    AssertMapping(STM32_ADC_INSTANCE_1, GD32_HAL_RESOURCE_ADC,
+    AssertMapping(STM32_ADC_SEMANTIC_1, STM32_ADC_INSTANCE_1,
+                  GD32_HAL_RESOURCE_ADC,
                   GD32_HAL_ADC0_ADDRESS);
-    AssertMapping(STM32_DMA0_CHANNEL0, GD32_HAL_RESOURCE_DMA,
+    AssertMapping(STM32_DMA0_CHANNEL0, STM32_DMA0_CHANNEL0,
+                  GD32_HAL_RESOURCE_DMA,
                   GD32_HAL_DMA0_CHANNEL0_ADDRESS);
-    AssertMapping(STM32_SPI_INSTANCE_1, GD32_HAL_RESOURCE_SPI,
+    AssertMapping(STM32_SPI_SEMANTIC_1, STM32_SPI_INSTANCE_1,
+                  GD32_HAL_RESOURCE_SPI,
                   GD32_HAL_SPI0_ADDRESS);
+
+    {
+        uint32_t request = 0U;
+        const GD32_HAL_Resource *resource = GD32_HAL_ResolveDMAStream(
+            STM32_DMA2_STREAM7, DMA_CHANNEL_4, DMA_MEMORY_TO_PERIPH, &request);
+        assert(resource != NULL);
+        assert(resource->gd32_instance == GD32_HAL_DMA0_CHANNEL3_ADDRESS);
+        assert(request == GD32_DMA_REQUEST_USART0_TX);
+    }
 
     assert(GD32_HAL_SPI0_ADDRESS == 0x40013000UL);
     assert(GD32_HAL_SPI0_ADDRESS != GD32_HAL_USART0_ADDRESS);

@@ -258,7 +258,7 @@ static int UART_IsDMAHandleValid(UART_HandleTypeDef *huart,
              address,
              transmit,
              GD32_HAL_DMA_MappedInstance(hdma),
-             hdma->Init.Channel) == 0) ||
+             GD32_HAL_DMA_MappedRequest(hdma)) == 0) ||
         (UART_IsDMADataConfigValid(huart, hdma, transmit) == 0))
     {
         GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_UART_DMA_CONFIG_MISMATCH,

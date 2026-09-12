@@ -1,6 +1,6 @@
-# GD32 HAL Compatibility Layer 0.9.0
+# GD32 HAL Compatibility Layer 0.10.0
 
-面向 `STM32F401VEH6 HAL 应用 -> GD32F403RET6 SPL` 的 API 兼容层。0.9.0 在 0.8.0 状态机基础上完成架构分层，不复制 STM32 HAL，不假设两颗 MCU 寄存器一致，也不为不存在的 GD32 能力返回假成功。
+面向 `STM32F401VEH6 HAL 应用 -> GD32F403RET6 SPL` 的源码兼容层。0.10.0 在 0.9.0 状态机与 Port 分层上增加受严格矩阵约束的 CMSIS/Register compatibility；不复制 STM32 HAL/CMSIS，不修改官方 GD32 文件，也不为不存在的能力返回假成功。
 
 ## 架构
 
@@ -13,16 +13,16 @@ Application
   -> GD32F403RET6
 ```
 
-公共 `USART1/TIM2/ADC1` 等 Instance 是不可解引用的 STM32 语义令牌。Init 时由 `Port/gd32_instance_map.c` 解析成目标地址、clock、IRQ 和 capability，并缓存到 Handle 的 `GD32_*` 字段。
+公共 `GPIOA/USART1/TIM1/ADC1/SPI1` 等 Instance 现在是其 GD32 映射目标的真实物理地址，并只通过 `stm32f401_register_compat.h` 暴露已确认成员。资源表同时保留 STM32 semantic ID、public address、GD32 address、clock、IRQ 与 capability，既有 `GD32_HAL_ResolveInstance()`/Handle 缓存路径不变。DMA Stream 仍是不可解引用的初始化 token。
 
-## 0.9.0 范围
+## 0.10.0 增量范围
 
-- Phase 1：HAL Core、GPIO、Tick、NVIC/MPU 子集；
-- Phase 2：UART polling/IT/DMA/Abort/IRQ/weak Callback；
-- Phase 3：GD32 controller/channel 模型的 DMA 基础、IT、Poll、Abort；
-- Phase 4：TIMER Base/PWM/OC/IC/OnePulse、DMA、TRGO、Master/Slave 和 ITR->ITI；
-- Phase 5：ADC regular polling/IT/DMA、序列、触发、采样时间和校准；
-- I2C、SPI、EXTI、RCC、FLASH 保留 0.8.0 已实现安全子集并做回归保护，不在本次继续扩张。
+- 保留 0.9.0 HAL Core、GPIO、UART、DMA、TIMER、ADC、I2C、SPI、EXTI、RCC、FLASH 状态机；
+- 新增 `stm32f4xx.h`、`stm32f401xe.h`、Register type/bit/common macro 层；
+- GPIO 安全子集、USART、TIMER、ADC 配置子集、SPI、EXTI 的直接符号访问；
+- 默认 strict mode，危险成员/bit 不暴露；
+- ADC calibration 独立于 enable 状态，所有 HAL polling/IT/DMA Start 统一校准；
+- 常见 CubeMX `DMAx_Streamy + DMA_CHANNEL_n` 初始化语法映射到 GD32 固定 Channel/request；Stream 寄存器继续编译失败。
 
 兼容层只暴露 STM32F401VE 实际存在且可安全映射的串口 `USART1/2/6`、定时器 `TIM1..5/TIM9..11` 和 `ADC1`。GD32 多出的 UART/TIMER/ADC 能力通过官方 SPL 原生使用，不借用不存在的 STM32F401 名称。
 
@@ -52,7 +52,16 @@ GD32F403RET6/CMSIS/GD/GD32F403/Include
 GD32F403RET6/GD32F403_standard_peripheral/Include
 ```
 
-0.9.0 核心源文件：
+0.10.0 新增公共头文件：
+
+```text
+Include/stm32f4xx.h
+Include/stm32f401xe.h
+Include/stm32f401_register_compat.h
+Include/stm32f401_register_bits.h
+```
+
+核心源文件沿用 0.9.0：
 
 ```text
 Source/stm32f4xx_hal.c
@@ -107,12 +116,14 @@ Callback 只由 `HAL_*_IRQHandler()`/DMA 收尾路径调用，Port 不绕过 HAL
 ## 关键迁移点
 
 - GPIO AF 电气模式可用，但 STM32 `Alternate` 编号不会自动变成 GD32 AFIO remap；在 MSP 中按目标引脚配置。
-- DMA 不接受 `DMA1_Streamx/DMA2_Streamx` 地址；选择 `GD32_DMAx_CHANNELy` 和对应 `GD32_DMA_REQUEST_*`。
+- DMA 接受矩阵中可唯一转换的 `DMA1/2_Streamx + DMA_CHANNEL_n + Direction` 初始化语法，也继续接受显式 `GD32_DMAx_CHANNELy + GD32_DMA_REQUEST_*`；任何 Stream 寄存器解引用都失败。
 - FIFO、Burst、PFCTRL、double buffer 无目标等价，明确失败。
 - GD32F403 TIMER 全部 16 位；TIM2/TIM5 的 32 位范围必须重构。
 - ITR 不是按数字直译；`stm32_timer_trigger_map.c` 按 slave Timer 查源，再查 GD ITI 矩阵。
 - ADC 外部触发只接受目标可保持语义的源和 rising edge；采样时间采用不短于请求值的保守映射，480 cycles 明确失败。
 - UART 只支持 16 倍过采样。
+- ADC `ADON` 直接 enable 后再走 HAL Start 仍会校准；严格模式不定义直接 `SWSTART`。
+- `TIM2/TIM5` 直接 CNT/ARR/CCR 访问仍只有 16 位，不能绕过 HAL 的范围保护。
 
 ## 自检
 
@@ -125,11 +136,12 @@ pwsh.exe -File .\Tests\run_checks.ps1
 ## 文档
 
 - [0.8.0 审查](Docs/V0.8.0_REVIEW.md)
-- [0.9.0 架构](Docs/ARCHITECTURE.md)
+- [0.10.0 架构](Docs/ARCHITECTURE.md)
 - [STM32/GD32 映射](Docs/STM32_GD32_MAPPING.md)
 - [限制](Docs/LIMITATION.md)
 - [TIMER trigger 映射](Docs/TIMER_TRIGGER_MAPPING.md)
 - [DMA 差异](Docs/DMA_DIFFERENCE.md)
 - [移植指南](Docs/PORTING_GUIDE.md)
+- [Register compatibility matrix](Docs/REGISTER_COMPATIBILITY_MATRIX.md)
 
 所有自动检查仍属于代码级证据。真实 GD32F403RET6 板上的引脚、时钟、IRQ、DMA、TIMER 波形和 ADC 性能尚需产品工程验证，不能据此宣称量产签核。

@@ -14,6 +14,8 @@ static int msp_deinit_count;
 static int calibration_count;
 static int disable_count;
 static int adc_enabled;
+static int calibration_valid;
+static int calibration_status;
 static int software_start_count;
 static uint32_t adc_flags;
 static uint32_t adc_interrupts;
@@ -111,6 +113,7 @@ int GD32_HAL_ADC_Configure(uint32_t adc_address,
     configured = *config;
     ++configure_count;
     adc_enabled = 0;
+    calibration_valid = 0;
     return 0;
 }
 
@@ -118,6 +121,7 @@ void GD32_HAL_ADC_DeInit(uint32_t adc_address)
 {
     assert(adc_address == GD32_HAL_ADC0_ADDRESS);
     adc_enabled = 0;
+    calibration_valid = 0;
 }
 
 int GD32_HAL_ADC_ConfigChannel(uint32_t adc_address,
@@ -135,10 +139,18 @@ int GD32_HAL_ADC_ConfigChannel(uint32_t adc_address,
 int GD32_HAL_ADC_EnableAndCalibrate(uint32_t adc_address)
 {
     assert(adc_address == GD32_HAL_ADC0_ADDRESS);
+    if (calibration_status != 0)
+    {
+        return calibration_status;
+    }
     if (adc_enabled == 0)
     {
         adc_enabled = 1;
+    }
+    if (calibration_valid == 0)
+    {
         ++calibration_count;
+        calibration_valid = 1;
     }
     return 0;
 }
@@ -147,6 +159,7 @@ void GD32_HAL_ADC_Disable(uint32_t adc_address)
 {
     assert(adc_address == GD32_HAL_ADC0_ADDRESS);
     adc_enabled = 0;
+    calibration_valid = 0;
     ++disable_count;
 }
 
@@ -323,6 +336,8 @@ static void ResetMocks(void)
     calibration_count = 0;
     disable_count = 0;
     adc_enabled = 0;
+    calibration_valid = 0;
+    calibration_status = 0;
     software_start_count = 0;
     adc_flags = 0U;
     adc_interrupts = 0U;
@@ -375,6 +390,9 @@ static void TestInitChannelPolling(void)
     channel.Channel = ADC_CHANNEL_VBAT;
     assert(HAL_ADC_ConfigChannel(&hadc, &channel) == HAL_ERROR);
 
+    /* 直接寄存器语义先 enable 也不能让 HAL 跳过 calibration。 */
+    adc_enabled = 1;
+    calibration_valid = 0;
     assert(HAL_ADC_Start(&hadc) == HAL_OK);
     assert(calibration_count == 1);
     assert(software_start_count == 1);
@@ -407,6 +425,7 @@ static void TestTriggerAndIT(void)
     assert(configured.trigger == GD32_HAL_ADC_TRIGGER_TIMER2_TRGO);
     software_before = software_start_count;
     assert(HAL_ADC_Start_IT(&hadc) == HAL_OK);
+    assert(calibration_count == 1);
     assert(software_start_count == software_before);
     assert((adc_interrupts & GD32_HAL_ADC_INTERRUPT_EOC) != 0U);
     adc_flags = GD32_HAL_ADC_FLAG_EOC;
@@ -455,6 +474,7 @@ static void TestDMA(void)
     hdma = MakeADCDMA(&hadc, DMA_NORMAL);
     hadc.DMA_Handle = &hdma;
     assert(HAL_ADC_Start_DMA(&hadc, samples, 2U) == HAL_OK);
+    assert(calibration_count == 1);
     assert(dma_source == GD32_HAL_ADC0_ADDRESS + 0x4CU);
     assert(dma_destination == (uint32_t)(uintptr_t)samples);
     assert(dma_length == 2U);
@@ -497,6 +517,32 @@ static void TestDMA(void)
     assert(gd32HalLastPortError == GD32_HAL_PORT_ERROR_ADC_DMA_LINK_INVALID);
 }
 
+static void TestCalibrationFailure(void)
+{
+    ADC_HandleTypeDef hadc = MakeADC();
+    DMA_HandleTypeDef hdma;
+    uint32_t sample = 0U;
+
+    assert(HAL_ADC_Init(&hadc) == HAL_OK);
+    calibration_status = -1;
+    assert(HAL_ADC_Start(&hadc) == HAL_ERROR);
+    assert((hadc.ErrorCode & HAL_ADC_ERROR_INTERNAL) != 0U);
+    assert((hadc.State & HAL_ADC_STATE_ERROR_INTERNAL) != 0U);
+    assert(software_start_count == 0);
+
+    hadc.State = HAL_ADC_STATE_READY;
+    hadc.ErrorCode = HAL_ADC_ERROR_NONE;
+    assert(HAL_ADC_Start_IT(&hadc) == HAL_ERROR);
+    assert(adc_interrupts == 0U);
+
+    hadc.State = HAL_ADC_STATE_READY;
+    hadc.ErrorCode = HAL_ADC_ERROR_NONE;
+    hdma = MakeADCDMA(&hadc, DMA_NORMAL);
+    hadc.DMA_Handle = &hdma;
+    assert(HAL_ADC_Start_DMA(&hadc, &sample, 1U) == HAL_ERROR);
+    assert(dma_request_enabled == 0);
+}
+
 int main(void)
 {
     ResetMocks();
@@ -505,6 +551,8 @@ int main(void)
     TestTriggerAndIT();
     ResetMocks();
     TestDMA();
+    ResetMocks();
+    TestCalibrationFailure();
     puts("ADC host tests: PASS");
     return 0;
 }

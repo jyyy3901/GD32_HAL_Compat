@@ -481,7 +481,7 @@ static void test_init_and_guards(void)
     assert((int)USART6_IRQn == STM32_HAL_IRQ_USART6);
     assert((uintptr_t)USART1 == STM32_UART_INSTANCE_1);
     assert((uintptr_t)USART6 == STM32_UART_INSTANCE_6);
-    assert((uint32_t)(uintptr_t)USART1 != GD32_HAL_USART0_ADDRESS);
+    assert((uint32_t)(uintptr_t)USART1 == GD32_HAL_USART0_ADDRESS);
 
     huart = mock_handle(USART1);
     assert(HAL_UART_Init(&huart) == HAL_OK);

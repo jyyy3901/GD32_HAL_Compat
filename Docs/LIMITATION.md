@@ -1,8 +1,8 @@
-# 0.9.0 限制与兼容等级
+# 0.10.0 限制与兼容等级
 
 ## API 状态
 
-| 模块 | 0.9.0 范围 | 等级 |
+| 模块 | 0.10.0 范围 | 等级 |
 |---|---|---|
 | HAL Core/Tick | Init/DeInit、Tick、Delay、UID、错误钩子 | 接口兼容 |
 | Cortex/NVIC/MPU | 常用 NVIC、SysTick、MPU 子集 | 接口兼容 |
@@ -15,11 +15,14 @@
 
 ## 明确不兼容
 
-- 不允许应用解引用 `Instance`，也不支持 STM32 寄存器字段访问。
-- 不接受 STM32 DMA Stream 地址；必须选择 GD32 物理 Channel 和固定请求令牌。
+- 只允许解引用 `REGISTER_COMPATIBILITY_MATRIX.md` 明确列出的 A/B 寄存器成员；Class C 成员不提供或不保证。
+- STM32 DMA Stream 可作为 `HAL_DMA_Init()` 的 opaque token；任何 Stream 寄存器解引用仍在编译期失败。
 - DMA FIFO、Burst、PFCTRL、double buffer 没有等价实现，非默认配置返回 `HAL_ERROR` 或编译失败。
 - GD32F403 TIMER 全部为 16 位；TIM2/TIM5 超出 `0xFFFF` 的 Period/Counter/CCR 不截断，明确失败。
-- TIMER Encoder、Hall、dead-time/break、complementary output、DMA burst 不在 0.9.0 范围。
+- TIM2/TIM5 直接 CNT/ARR/CCR 写无法被 HAL 拦截，属于 conditional/unsafe register compatibility。
+- ADC direct `ADON` 后再调用任一 HAL Start 会补做校准；direct `ADON+SWSTART` 在 strict mode 不支持。
+- GPIO MODER/OTYPER/OSPEEDR/PUPDR/AFR、RCC、I2C、DMA Stream、FLASH/FMC 的整块 STM32 register overlay 不提供。
+- TIMER Encoder、Hall、dead-time/break、complementary output、DMA burst 不在 0.10.0 范围。
 - ADC falling/both external trigger edge、480-cycle sampling、不可映射 trigger、per-conversion EOC 序列语义不伪造。
 - `USE_HAL_*_REGISTER_CALLBACKS` 运行时回调注册未实现；使用 weak Callback。
 - GPIO STM32 AF 编号不自动转换成 GD32 AFIO remap；引脚与 remap 必须按目标板重配。
@@ -32,4 +35,4 @@ STM32F401VEH6 与 GD32F403RET6 不是引脚兼容替换。源器件存在而目�
 
 ## 板级待验证
 
-必须验证时钟、NVIC 优先级、共享 IRQ、UART 波特率/错误注入、DMA 请求冲突与 normal/circular 状态、TIMER PWM/捕获/级联/TRGO、ADC 输入范围/采样时间/触发/DMA/校准，以及所有目标引脚和 AFIO remap。0.9.0 的代码检查结果不等于量产签核。
+必须验证时钟、NVIC 优先级、共享 IRQ、UART 波特率/错误注入、DMA 请求冲突与 normal/circular 状态、TIMER PWM/捕获/级联/TRGO、ADC 输入范围/采样时间/触发/DMA/校准，以及所有目标引脚和 AFIO remap。0.10.0 的代码检查结果不等于硬件或量产签核。

@@ -12,17 +12,7 @@ extern "C" {
 #error "Runtime TIM callback registration is not implemented; use weak callbacks"
 #endif
 
-/* Instance 故意保持不透明；GD32F403 的所有 TIMER 均为 16 位。 */
-typedef struct GD32_HAL_TIM_TypeDef TIM_TypeDef;
-
-#define TIM1  ((TIM_TypeDef *)(uintptr_t)STM32_TIM_INSTANCE_1)
-#define TIM2  ((TIM_TypeDef *)(uintptr_t)STM32_TIM_INSTANCE_2)
-#define TIM3  ((TIM_TypeDef *)(uintptr_t)STM32_TIM_INSTANCE_3)
-#define TIM4  ((TIM_TypeDef *)(uintptr_t)STM32_TIM_INSTANCE_4)
-#define TIM5  ((TIM_TypeDef *)(uintptr_t)STM32_TIM_INSTANCE_5)
-#define TIM9  ((TIM_TypeDef *)(uintptr_t)STM32_TIM_INSTANCE_9)
-#define TIM10 ((TIM_TypeDef *)(uintptr_t)STM32_TIM_INSTANCE_10)
-#define TIM11 ((TIM_TypeDef *)(uintptr_t)STM32_TIM_INSTANCE_11)
+/* TIM_TypeDef/Instance 来自寄存器兼容层；目标计数宽度仍严格限制为 16 位。 */
 
 #define TIM1_BRK_TIM9_IRQn      ((IRQn_Type)STM32_HAL_IRQ_TIM1_BRK_TIM9)
 #define TIM1_UP_TIM10_IRQn      ((IRQn_Type)STM32_HAL_IRQ_TIM1_UP_TIM10)

@@ -5,8 +5,7 @@
 extern "C" {
 #endif
 
-#include "stm32_hal_cmsis_bridge.h"
-#include "stm32_hal_instance_map.h"
+#include "stm32f401xe.h"
 #include "stm32_hal_port_api.h"
 #include <stddef.h>
 #include <stdint.h>

@@ -311,7 +311,7 @@ static int ADC_DMAConfigValid(const ADC_HandleTypeDef *hadc)
     }
     if ((GD32_HAL_ADC_IsDMAChannelValid(
              ADC_Address(hadc), GD32_HAL_DMA_MappedInstance(hdma),
-             hdma->Init.Channel) == 0) ||
+             GD32_HAL_DMA_MappedRequest(hdma)) == 0) ||
         (hdma->Init.Direction != DMA_PERIPH_TO_MEMORY) ||
         (hdma->Init.PeriphInc != DMA_PINC_DISABLE) ||
         (hdma->Init.MemInc != DMA_MINC_ENABLE) ||
@@ -325,7 +325,7 @@ static int ADC_DMAConfigValid(const ADC_HandleTypeDef *hadc)
          (hadc->Init.DMAContinuousRequests != ENABLE)))
     {
         GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_ADC_DMA_CONFIG_MISMATCH,
-                           hdma->Init.Channel);
+                           GD32_HAL_DMA_MappedRequest(hdma));
         return 0;
     }
     return 1;

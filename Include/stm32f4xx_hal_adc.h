@@ -12,19 +12,7 @@ extern "C" {
 #error "Runtime ADC callback registration is not implemented; use weak callbacks"
 #endif
 
-typedef struct GD32_HAL_ADC_TypeDef ADC_TypeDef;
-
-/* STM32F401 只有 ADC1；兼容层把它语义映射到 GD32 ADC0。 */
-#ifdef ADC0
-#undef ADC0
-#endif
-#ifdef ADC1
-#undef ADC1
-#endif
-#ifdef ADC2
-#undef ADC2
-#endif
-#define ADC1 ((ADC_TypeDef *)(uintptr_t)STM32_ADC_INSTANCE_1)
+/* STM32F401 ADC1 的公开寄存器视图映射到 GD32 ADC0 真实地址。 */
 #define ADC_IRQn ((IRQn_Type)STM32_HAL_IRQ_ADC1)
 
 typedef struct

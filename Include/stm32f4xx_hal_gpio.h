@@ -7,36 +7,7 @@ extern "C" {
 
 #include "stm32f4xx_hal_def.h"
 
-/* GPIO_TypeDef 故意保持不透明，阻止应用把 STM32 寄存器布局套到 GD32 上。 */
-typedef struct GD32_HAL_GPIO_TypeDef GPIO_TypeDef;
-
-/* 覆盖 GD32 SPL 的整数基地址宏，恢复 STM32 HAL 常用的指针类型 Instance。 */
-#ifdef GPIOA
-#undef GPIOA
-#endif
-#ifdef GPIOB
-#undef GPIOB
-#endif
-#ifdef GPIOC
-#undef GPIOC
-#endif
-#ifdef GPIOD
-#undef GPIOD
-#endif
-#ifdef GPIOE
-#undef GPIOE
-#endif
-#ifdef GPIOF
-#undef GPIOF
-#endif
-#ifdef GPIOG
-#undef GPIOG
-#endif
-
-#define GPIOA ((GPIO_TypeDef *)(uintptr_t)STM32_GPIO_INSTANCE_A)
-#define GPIOB ((GPIO_TypeDef *)(uintptr_t)STM32_GPIO_INSTANCE_B)
-#define GPIOC ((GPIO_TypeDef *)(uintptr_t)STM32_GPIO_INSTANCE_C)
-#define GPIOD ((GPIO_TypeDef *)(uintptr_t)STM32_GPIO_INSTANCE_D)
+/* GPIO_TypeDef/Instance 由严格寄存器兼容层按安全成员统一定义。 */
 
 typedef struct
 {

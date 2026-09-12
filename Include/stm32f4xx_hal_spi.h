@@ -12,27 +12,12 @@ extern "C" {
 #error "Runtime SPI callback registration is not implemented; use weak callbacks"
 #endif
 
-typedef struct GD32_HAL_SPI_TypeDef SPI_TypeDef;
-
-#ifdef SPI0
-#undef SPI0
-#endif
-#ifdef SPI1
-#undef SPI1
-#endif
-#ifdef SPI2
-#undef SPI2
-#endif
 #ifdef SPI_NSS_SOFT
 #undef SPI_NSS_SOFT
 #endif
 #ifdef SPI_NSS_HARD
 #undef SPI_NSS_HARD
 #endif
-#define SPI1 ((SPI_TypeDef *)(uintptr_t)STM32_SPI_INSTANCE_1)
-#define SPI2 ((SPI_TypeDef *)(uintptr_t)STM32_SPI_INSTANCE_2)
-#define SPI3 ((SPI_TypeDef *)(uintptr_t)STM32_SPI_INSTANCE_3)
-
 #define SPI1_IRQn ((IRQn_Type)STM32_HAL_IRQ_SPI1)
 #define SPI2_IRQn ((IRQn_Type)STM32_HAL_IRQ_SPI2)
 #define SPI3_IRQn ((IRQn_Type)STM32_HAL_IRQ_SPI3)

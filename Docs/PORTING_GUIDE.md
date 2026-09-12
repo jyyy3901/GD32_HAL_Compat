@@ -1,6 +1,6 @@
 # STM32F401VEH6 到 GD32F403RET6 移植指南
 
-> 0.9.0 的架构、映射和限制以 `ARCHITECTURE.md`、`STM32_GD32_MAPPING.md`、`LIMITATION.md` 为准。
+> 0.10.0 的架构、映射和限制以 `ARCHITECTURE.md`、`STM32_GD32_MAPPING.md`、`REGISTER_COMPATIBILITY_MATRIX.md`、`LIMITATION.md` 为准。
 
 ## 1. 先做硬件迁移审计
 
@@ -17,7 +17,7 @@
 
 需要逐项审计：
 
-- 直接访问 `Instance->CRx/SR/DR/ARR/CCR` 的代码。
+- 直接访问 `Instance->CRx/SR/DR/ARR/CCR` 的代码；只有矩阵 A/B 且使用符号 bit 的访问可保留。
 - 依赖 STM32 IRQn、DMA Stream/Channel、GPIO AF number 的代码。
 - `HAL_RCC_*` 时钟树配置；门控与查询可保留，STM32 PLL 参数必须重写。
 - TIM2/TIM5 32 位范围。
@@ -47,7 +47,7 @@
 #include "stm32f4xx_hal.h"
 ```
 
-工程 Include path 应让 `GD32_HAL_Compat/Inc` 位于 STM32 HAL Inc 之前，并且完全移除 STM32 CMSIS device include path，避免同名 `GPIOA`、IRQn_Type 和寄存器类型混入。
+工程 Include path 应让 `GD32_HAL_Compat/Include` 位于 STM32 HAL Inc 之前，并且完全移除 STM32 CMSIS device include path，避免同名 `GPIOA`、IRQn_Type 和寄存器类型混入。`stm32f4xx.h`/`stm32f401xe.h` 由本项目提供，内部桥接目标 CMSIS Core。
 
 ## 5. SystemClock_Config
 
@@ -113,7 +113,7 @@ TIMER IRQ 也使用 GD32 startup 名称。例如兼容层 `TIM2` 对应 `TIMER1_
 
 ## 9. DMA Instance 与请求迁移
 
-STM32 的 `DMA1/2_Streamx + Init.Channel` 不是 GD32 的可选请求路由。迁移每个 DMA Handle 时：
+STM32 的 `DMA1/2_Streamx + Init.Channel` 不是 GD32 的可选请求路由。0.10.0 对 USART1/2/6、ADC1、SPI1/2/3、I2C1/2 的已确认唯一组合允许保留 CubeMX 初始化语法；`HAL_DMA_Init()` 会转换到目标固定 Channel/request。未覆盖的组合按以下步骤显式迁移：
 
 1. 从 User Manual 表 10-3/10-4 找到目标外设请求固定 Channel。
 2. 把 `Instance` 改为 `GD32_DMA0_CHANNELx` 或 `GD32_DMA1_CHANNELx`。
@@ -121,7 +121,7 @@ STM32 的 `DMA1/2_Streamx + Init.Channel` 不是 GD32 的可选请求路由。�
 4. FIFO、burst、PFCTRL、double-buffer 配置必须移除或重构。
 5. UART、ADC、SPI 使用 `__HAL_LINKDMA()` 绑定；TIMER 使用 `htim.hdma[TIM_DMA_ID_*]` 与 `Parent` 绑定。UART/TIMER/ADC/SPI 均管理自身 DMA 请求使能位；I2C DMA 当前明确不支持。
 
-ADC1 固定映射 GD ADC0，DMA 固定为 `GD32_DMA0_CHANNEL0 + GD32_DMA_REQUEST_ADC0`，方向 P2M，PINC disable，MINC enable，外设/内存均 word。`DMAContinuousRequests=ENABLE` 必须搭配 circular；DISABLE 必须搭配 normal。`HAL_ADC_Init()` 后尚未校准，首次 Start/Start_IT/Start_DMA 会在 enable 后等待并校准；每次 Stop 造成 ADC 掉电，下一次 Start 会重新校准。
+ADC1 固定映射 GD ADC0，DMA 固定为 `GD32_DMA0_CHANNEL0 + GD32_DMA_REQUEST_ADC0`，方向 P2M，PINC disable，MINC enable，外设/内存均 word。`DMAContinuousRequests=ENABLE` 必须搭配 circular；DISABLE 必须搭配 normal。`HAL_ADC_Init()` 后尚未校准，首次 Start/Start_IT/Start_DMA 会经过同一个 enable、稳定等待与 calibration gate。校准状态独立于 ADCON；即使应用先直接写 `ADC1->CR2 |= ADC_CR2_ADON`，随后 HAL Start 仍会校准。HAL Stop/DeInit、ADC clock disable、peripheral reset 和 RCU reset 都使状态失效。direct `ADON+SWSTART` 绕过此 gate，在 strict mode 不提供 `ADC_CR2_SWSTART`。
 
 I2C1/I2C2 映射 GD I2C0/I2C1。7 位 `DevAddress` 保持 STM HAL 左移一位约定；Mem/IsDeviceReady 仅支持 7 位。中断文件分别在 `I2C0_EV_IRQHandler`/`I2C0_ER_IRQHandler` 中调用 `HAL_I2C_EV_IRQHandler(&hi2c1)`/`HAL_I2C_ER_IRQHandler(&hi2c1)`，I2C1 对应同理。软件复位恢复不包含 GPIO SCL 脉冲；外部器件拉低 SDA/SCL 的产品必须实现独立板级恢复流程。
 
@@ -171,6 +171,7 @@ PD0/PD1 还必须先停用 HXTAL，并完成 `GPIO_PD01_REMAP` 与板级审计�
 2. 可保留常用时钟门控、`HAL_RCC_Get*Freq()`、HSI/HSE 控制和当前/已配置时钟源切换。
 3. `HAL_RCC_ClockConfig()` 会校验 168/168/84/168 MHz 的 SYSCLK/AHB/APB1/APB2 上限，按升频前、降频后的顺序调整 Flash wait state，并更新 Tick。
 4. LSE/LSI、RTC/备份域与新建 PLL 请求当前返回 `HAL_ERROR`，应留在原生系统时钟代码中。
+5. 不要访问 `RCC->AHB1ENR/APB1ENR/APB2ENR`。STM32 单个 AHB1ENR 的资源在 GD32 分散到 AHBEN/APB2EN，无法安全 overlay；使用 `__HAL_RCC_*_CLK_ENABLE/DISABLE()`。
 
 ## 13. EXTI 迁移
 
@@ -184,11 +185,11 @@ FLASH 默认无可写范围。先在 GD32 链接脚本中建立独立、2 KB 对
 
 ## 15. 编译器
 
-- GCC/Clang：`__weak` 和 `__packed` 使用 attribute。
+- GCC ARM Embedded/Clang：`__weak` 和 `__packed` 使用 attribute。
 - ARMClang：兼容 attribute。
-- IAR：使用 IAR 关键字/CMSIS 定义。
+- IAR EWARM 9.30：使用 IAR 关键字/CMSIS 定义；统一 static-assert 宏在 C11 不可用时退化为 typedef 检查。
 
-发布前要分别建立 IAR、GCC ARM Embedded、ARMCC/ARMClang 工程；当前自动检查使用 Clang ARM target。
+发布前要分别建立 IAR EWARM 9.30、GCC ARM Embedded、ARMClang 工程；仓库自动检查会报告当前主机实际可用并执行的编译器，未安装的工具链不能视为已验证。
 
 ## 16. 最小上板顺序
 

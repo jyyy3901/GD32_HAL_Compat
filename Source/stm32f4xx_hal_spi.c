@@ -705,7 +705,7 @@ static int SPI_ValidateDMA(const SPI_HandleTypeDef *hspi,
            (GD32_HAL_SPI_IsDMAChannelValid(
                 SPI_Address(hspi), transmit,
                 GD32_HAL_DMA_MappedInstance(hdma),
-                hdma->Init.Channel) != 0);
+                GD32_HAL_DMA_MappedRequest(hdma)) != 0);
 }
 
 static HAL_StatusTypeDef SPI_DMAStartFailure(SPI_HandleTypeDef *hspi)

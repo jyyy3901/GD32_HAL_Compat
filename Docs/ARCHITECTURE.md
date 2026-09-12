@@ -1,13 +1,13 @@
-# 0.9.0 架构
+# 0.10.0 架构
 
 ## 目标
 
-0.9.0 是面向“STM32F401VEH6 HAL 应用语义 -> GD32F403RET6 SPL”的 API 兼容层，不是 STM32 HAL 的复制品，也不复用 STM32 寄存器布局。
+0.10.0 在 0.9.0 HAL/Port 状态机上增加经矩阵证明的 source-level CMSIS/Register compatibility。它不是 STM32 HAL/CMSIS 的复制品，也不追求 binary ABI。
 
 ```text
 Application
     |
-STM32 HAL Compatible API       Include/stm32f4xx_hal_*.h
+STM32 HAL + safe register API  Include/stm32f4xx*.h
     |
 Compatibility State Machines  Source/stm32f4xx_hal_*.c
     |
@@ -24,7 +24,7 @@ GD32F403RET6
 
 | 目录 | 职责 | 禁止内容 |
 |---|---|---|
-| `Include/` | STM32 HAL 风格类型、宏、API；不透明 Instance；Port contract | GD32 寄存器地址、直接 SPL 调用、STM32 寄存器结构 |
+| `Include/` | STM32 HAL 类型/宏/API；确认安全的目标寄存器视图；Port contract | 复制 ST CMSIS、直接 SPL 调用、未证明的寄存器成员/bit |
 | `Source/` | HAL 状态机、超时、锁、IRQ 处理、Callback 调度 | 直接读写 GD32/STM32 外设寄存器、直接调用 SPL |
 | `Port/` | Instance/clock/IRQ/capability 解析与 GD32 SPL 转换 | 伪造目标不存在的 FIFO、Burst、32 位 TIMER 等能力 |
 | `CMSIS/` | 官方 CMSIS 的外部集成说明 | 厂商源码副本或修改版 |
@@ -33,15 +33,21 @@ GD32F403RET6
 
 ## Instance 与资源
 
-`USART1`、`TIM2`、`ADC1` 等公共 Instance 是 `0xF401xxxx` 形式的不可解引用语义令牌。`Port/gd32_instance_map.c` 在 Init 时把令牌解析成 `GD32_HAL_Resource`：
+`GPIOA`、`USART1`、`TIM1`、`ADC1`、`SPI1` 等可安全寄存器访问的公共 Instance 是目标 GD32 外设的真实物理地址。DMA Stream 是 `0xF401xxxx` 形式的初始化 token，仍不可解引用。`Port/gd32_instance_map.c` 的每项资源同时保存：
 
+- `semantic_id`：稳定的 STM32 逻辑 ID；
+- `stm32_instance`：公开 compatible address/token；
 - `gd32_instance`：目标外设地址；
 - `gd32_clock`：目标 RCU 资源；
 - `gd32_irq`：目标向量号；
 - `capabilities`：DMA、主从、TRGO、通道数、流控等能力；
 - DMA controller/channel 等目标索引。
 
-Handle 保留 STM32 常用字段，并缓存 `GD32_INSTANCE`、`GD32_IRQ_NUMBER`、`GD32_RESOURCE`。DMA 另外保存 `gd32_dma_periph` 和 `gd32_dma_channel`。应用不得解引用 `Instance` 或把它与 GD32 地址比较。
+Handle 继续缓存 `GD32_INSTANCE`、`GD32_IRQ_NUMBER`、`GD32_RESOURCE`。DMA 另存转换后的 `GD32_REQUEST` 与原 token。直接寄存器只允许 `REGISTER_COMPATIBILITY_MATRIX.md` 中 A/B 项；Class C 必须使用 HAL/Port 或在编译期失败。
+
+## Strict mode
+
+`GD32_HAL_STRICT_STM32_COMPAT` 默认 `1`。`GD32_HAL_ENABLE_UNSAFE_REGISTER_COMPAT` 默认 `0`；只有后者显式启用才暴露实验性的 ADC direct-start bit。GPIO MODER/AFR、DMA Stream registers、RCC/I2C/FLASH overlay 等结构性不等价项不因追求编译率而伪造。
 
 ## 调用与错误路径
 

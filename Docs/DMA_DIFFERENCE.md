@@ -2,7 +2,7 @@
 
 ## 硬件模型
 
-| 项目 | STM32F401 | GD32F403 | 0.9.0 策略 |
+| 项目 | STM32F401 | GD32F403 | 0.10.0 策略 |
 |---|---|---|---|
 | 组织 | DMA1/2，各 8 Stream | DMA0 7 Channel、DMA1 5 Channel | 内部只使用 controller/channel |
 | 请求选择 | Stream + Channel selector | 外设请求固定接到物理 Channel | 使用 `GD32_DMA_REQUEST_*` 令牌校验 |
@@ -14,16 +14,30 @@
 
 ## Handle
 
-`DMA_HandleTypeDef.Instance` 是 GD32 Channel 的语义令牌，不是 STM32 Stream 寄存器地址。Init 后缓存：
+`DMA_HandleTypeDef.Instance` 可继续填写 CubeMX 风格的 `DMA1/2_Stream0..7` opaque token，也可填写兼容层原有的 GD32 Channel 语义令牌。两者都不是可解引用的 STM32 Stream 寄存器地址。Init 后缓存：
 
 - `GD32_INSTANCE`：Channel register block；
 - `gd32_dma_periph`：DMA0/DMA1；
 - `gd32_dma_channel`：0..6 或 0..4；
+- `GD32_REQUEST`：已转换的 GD32 固定外设请求；
+- `GD32_RESOLVED_FROM`：原始 Stream/Channel token；
 - `GD32_IRQ_NUMBER` 与 `GD32_RESOURCE`。
 
 保留 `DMA_InitTypeDef.Channel/FIFOMode/FIFOThreshold/MemBurst/PeriphBurst` 是为了常见 STM32 初始化代码可编译，不代表目标硬件拥有这些能力。
 
 ## 初始化要求
+
+0.10.0 可保留矩阵中能够唯一判定的 CubeMX 初始化语法。例如 USART1 TX：
+
+```c
+hdma.Instance = DMA2_Stream7;
+hdma.Init.Channel = DMA_CHANNEL_4;
+hdma.Init.Direction = DMA_MEMORY_TO_PERIPH;
+```
+
+`HAL_DMA_Init()` 根据 Stream、Channel selector、方向以及后续绑定的外设能力，将它转换为 GD32 的物理 controller/channel/request。当前覆盖 USART1/2/6、ADC1、SPI1/2/3 和 I2C1/2 的唯一映射；不唯一或未确认的组合返回 `HAL_ERROR`。TIMER DMA 仍使用下面的显式 GD32 token 路径。
+
+显式目标映射语法继续支持：
 
 ```c
 DMA_HandleTypeDef hdma = {0};
@@ -43,6 +57,10 @@ hdma.Init.PeriphBurst = DMA_PBURST_SINGLE;
 ```
 
 外设 DMA API 还会检查 Parent、方向、数据宽度、固定 Channel/request 组合和外设 DMA capability。任何不匹配均返回 `HAL_ERROR`，不会启动“看似成功”的搬运。
+
+## 寄存器边界
+
+`DMA_Stream_TypeDef` 保持 incomplete type。`DMA2_Stream0->CR`、`DMA2_Stream0->NDTR` 等访问必须在编译期失败；不会用 GD32 Channel 寄存器伪造 STM32 Stream/FIFO 布局。literal STM32 Stream 地址也不属于兼容范围。
 
 ## 状态与 IRQ
 

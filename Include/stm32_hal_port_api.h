@@ -32,6 +32,7 @@ typedef enum
 
 typedef struct GD32_HAL_Resource
 {
+    uintptr_t semantic_id;
     uintptr_t stm32_instance;
     uint32_t gd32_instance;
     uint32_t gd32_periph;
@@ -174,6 +175,7 @@ typedef enum
     GD32_HAL_PORT_ERROR_ADC_DMA_LINK_INVALID,
     GD32_HAL_PORT_ERROR_ADC_DMA_CONFIG_MISMATCH,
     GD32_HAL_PORT_ERROR_ADC_OVERRUN_UNAVAILABLE,
+    GD32_HAL_PORT_ERROR_ADC_CALIBRATION_TIMEOUT,
     GD32_HAL_PORT_ERROR_I2C_INVALID_CONFIG,
     GD32_HAL_PORT_ERROR_I2C_TIMEOUT,
     GD32_HAL_PORT_ERROR_I2C_DMA_UNSUPPORTED,
@@ -512,6 +514,10 @@ int GD32_HAL_PortDeInit(void);
 uint32_t GD32_HAL_ReadUIDWord(uint8_t index);
 const GD32_HAL_Resource *GD32_HAL_ResolveInstance(uintptr_t stm32_instance,
                                                   GD32_HAL_ResourceKind kind);
+const GD32_HAL_Resource *GD32_HAL_ResolveDMAStream(uintptr_t stream_instance,
+                                                   uint32_t stm32_channel,
+                                                   uint32_t stm32_direction,
+                                                   uint32_t *gd32_request);
 
 int GD32_HAL_GPIO_IsInstance(uint32_t gpio_address);
 int GD32_HAL_GPIO_ArePinsAvailable(uint32_t gpio_address, uint32_t pins);
@@ -660,6 +666,9 @@ int GD32_HAL_ADC_ConfigChannel(uint32_t adc_address,
 int GD32_HAL_ADC_EnableAndCalibrate(uint32_t adc_address);
 void GD32_HAL_ADC_Disable(uint32_t adc_address);
 int GD32_HAL_ADC_IsEnabled(uint32_t adc_address);
+int GD32_HAL_ADC_IsCalibrationValid(uint32_t adc_address);
+void GD32_HAL_ADC_SetCalibrationValid(uint32_t adc_address);
+void GD32_HAL_ADC_InvalidateCalibration(uint32_t adc_address);
 void GD32_HAL_ADC_StartSoftware(uint32_t adc_address);
 uint32_t GD32_HAL_ADC_GetFlag(uint32_t adc_address, uint32_t flags);
 void GD32_HAL_ADC_ClearFlag(uint32_t adc_address, uint32_t flags);

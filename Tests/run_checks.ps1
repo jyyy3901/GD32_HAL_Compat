@@ -280,7 +280,8 @@ if ($adcLinkExit -ne 0) {
     throw "ADC compatibility layer did not link with official GD32 ADC/DMA/GPIO/RCU sources: $($adcLinkOutput | Out-String)"
 }
 $adcLinkSymbols = (& $llvmNm $adcLinkElf | Out-String)
-foreach ($symbol in @('TargetSmoke', 'HAL_ADC_Init', 'adc_calibration_enable')) {
+foreach ($symbol in @('TargetSmoke', 'HAL_ADC_Init',
+                      'GD32_HAL_ADC_EnableAndCalibrate')) {
     if ($adcLinkSymbols -notmatch "(?m)\sT\s+$symbol\r?`$") {
         throw "ADC target-link symbol missing: $symbol"
     }
@@ -354,6 +355,7 @@ $phase8LinkSources = @(
     (Join-Path $project 'Source\stm32f4xx_hal_flash_ex.c'),
     (Join-Path $project 'Source\stm32f4xx_hal_flash_callbacks.c'),
     (Join-Path $project 'Port\gd32_core_port.c'),
+    (Join-Path $project 'Port\gd32_instance_map.c'),
     (Join-Path $project 'Port\gd32_rcc_port.c'),
     (Join-Path $project 'Port\gd32_exti_port.c'),
     (Join-Path $project 'Port\gd32_flash_port.c'),
@@ -402,6 +404,35 @@ foreach ($symbol in @('TargetSmoke', 'HAL_RCC_ClockConfig',
     }
 }
 Write-Output 'RCC/EXTI/FLASH official GD32 SPL target link: PASS'
+
+$registerCompileSources = Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'Compile') `
+    -Filter '*.c' | Where-Object { $_.Name -notmatch 'negative' }
+foreach ($source in $registerCompileSources) {
+    & $clang --target=arm-none-eabi -mcpu=cortex-m4 -mthumb -std=c11 `
+        -ffreestanding -Wall -Wextra -Werror @armIncludes -fsyntax-only $source.FullName
+    if ($LASTEXITCODE -ne 0) {
+        throw "Register compatibility compile failed: $($source.Name)"
+    }
+}
+Write-Output 'Register compatibility positive compile: PASS'
+
+$registerNegativeTests = @(
+    @{ File = 'register_dma_negative.c'; Pattern = 'incomplete definition' },
+    @{ File = 'register_gpio_model_negative.c'; Pattern = 'MODER' },
+    @{ File = 'register_tim_dma_burst_negative.c'; Pattern = 'DCR' },
+    @{ File = 'register_adc_start_negative.c'; Pattern = 'ADC_CR2_SWSTART' },
+    @{ File = 'register_unsupported_bit_negative.c'; Pattern = 'ADC_SR_OVR' }
+)
+foreach ($test in $registerNegativeTests) {
+    $source = Join-Path (Join-Path $PSScriptRoot 'Compile') $test.File
+    $output = & $clang --target=arm-none-eabi -mcpu=cortex-m4 -mthumb -std=c11 `
+        -ffreestanding @armIncludes -fsyntax-only $source 2>&1
+    if (($LASTEXITCODE -eq 0) -or
+        (($output | Out-String) -notmatch $test.Pattern)) {
+        throw "Register compatibility negative test unexpectedly passed: $($test.File)"
+    }
+}
+Write-Output 'Register compatibility negative compile: PASS'
 
 $unsupportedSource = Join-Path $PSScriptRoot 'test_unsupported_compile.c'
 $unsupportedOutput = & $clang --target=arm-none-eabi -mcpu=cortex-m4 -mthumb -std=c11 `

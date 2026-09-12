@@ -92,6 +92,10 @@ int GD32_HAL_RCC_SetInstanceClock(uintptr_t stm32_instance,
     }
     else
     {
+        if (kind == GD32_HAL_RESOURCE_ADC)
+        {
+            GD32_HAL_ADC_InvalidateCalibration(resource->gd32_instance);
+        }
         rcu_periph_clock_disable((rcu_periph_enum)resource->gd32_clock);
     }
     return 0;
@@ -124,6 +128,7 @@ int GD32_HAL_RCC_SetCommonClock(GD32_HAL_RCCCommonClock clock, int enable)
 
 void GD32_HAL_RCC_DeInit(void)
 {
+    GD32_HAL_ADC_InvalidateCalibration(GD32_HAL_ADC0_ADDRESS);
     rcu_deinit();
 }
 

@@ -26,6 +26,7 @@ int GD32_HAL_PortDeInit(void)
     size_t index;
     uint32_t channel;
 
+    GD32_HAL_ADC_InvalidateCalibration(GD32_HAL_ADC0_ADDRESS);
     for (index = 0U; index < (sizeof(resets) / sizeof(resets[0])); ++index)
     {
         rcu_periph_reset_enable(resets[index]);

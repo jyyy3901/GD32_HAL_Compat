@@ -11,7 +11,7 @@ static uint32_t DMA_Address(const DMA_HandleTypeDef *hdma)
     const GD32_HAL_Resource *resource;
 
     if ((hdma != NULL) && (hdma->GD32_RESOURCE != NULL) &&
-        (hdma->GD32_RESOURCE->stm32_instance == (uintptr_t)hdma->Instance))
+        (hdma->GD32_RESOLVED_FROM == (uintptr_t)hdma->Instance))
     {
         return hdma->GD32_INSTANCE;
     }
@@ -177,14 +177,23 @@ HAL_StatusTypeDef HAL_DMA_Init(DMA_HandleTypeDef *hdma)
     GD32_HAL_DMAConfig config;
     const GD32_HAL_Resource *resource;
     uint32_t address;
+    uint32_t gd32_request;
 
     if ((hdma == NULL) || (hdma->Instance == NULL))
     {
         GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_INVALID_INSTANCE, 0U);
         return HAL_ERROR;
     }
+    gd32_request = hdma->Init.Channel;
     resource = GD32_HAL_ResolveInstance((uintptr_t)hdma->Instance,
                                         GD32_HAL_RESOURCE_DMA);
+    if (resource == NULL)
+    {
+        resource = GD32_HAL_ResolveDMAStream((uintptr_t)hdma->Instance,
+                                             hdma->Init.Channel,
+                                             hdma->Init.Direction,
+                                             &gd32_request);
+    }
     if (resource == NULL)
     {
         GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_INVALID_INSTANCE,
@@ -197,6 +206,8 @@ HAL_StatusTypeDef HAL_DMA_Init(DMA_HandleTypeDef *hdma)
     hdma->GD32_INSTANCE = resource->gd32_instance;
     hdma->gd32_dma_periph = resource->gd32_periph;
     hdma->gd32_dma_channel = resource->gd32_channel;
+    hdma->GD32_REQUEST = gd32_request;
+    hdma->GD32_RESOLVED_FROM = (uintptr_t)hdma->Instance;
     hdma->GD32_IRQ_NUMBER = resource->gd32_irq;
     address = resource->gd32_instance;
     if ((hdma->State == HAL_DMA_STATE_BUSY) ||
@@ -220,7 +231,7 @@ HAL_StatusTypeDef HAL_DMA_Init(DMA_HandleTypeDef *hdma)
         return HAL_ERROR;
     }
     if (GD32_HAL_DMA_IsRequestValid(address,
-                                     hdma->Init.Channel,
+                                     hdma->GD32_REQUEST,
                                      DMA_DirectionValue(hdma->Init.Direction)) == 0)
     {
         GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_DMA_REQUEST_MISMATCH,
@@ -305,6 +316,8 @@ HAL_StatusTypeDef HAL_DMA_DeInit(DMA_HandleTypeDef *hdma)
     hdma->gd32_dma_channel = 0U;
     hdma->GD32_IRQ_NUMBER = -1;
     hdma->GD32_RESOURCE = NULL;
+    hdma->GD32_REQUEST = GD32_HAL_DMA_REQUEST_MEMORY;
+    hdma->GD32_RESOLVED_FROM = 0U;
     __HAL_UNLOCK(hdma);
     GD32_HAL_DMA_Release(address, hdma);
     return HAL_OK;

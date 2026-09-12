@@ -16,6 +16,26 @@
 #define STM32_ADC_EDGE_NONE      0x00000000U
 #define STM32_ADC_EDGE_RISING    0x00000001U
 
+static uint32_t ADC_CalibrationTimeoutLoops(void)
+{
+    uint32_t loops = SystemCoreClock / 100U;
+    return (loops < 1000U) ? 1000U : loops;
+}
+
+static int ADC_WaitControlBitClear(uint32_t adc_address, uint32_t bit)
+{
+    uint32_t timeout = ADC_CalibrationTimeoutLoops();
+    while ((ADC_CTL1(adc_address) & bit) != 0U)
+    {
+        if (timeout == 0U)
+        {
+            return -1;
+        }
+        --timeout;
+    }
+    return 0;
+}
+
 static uint32_t ADC_Resolution(uint8_t bits)
 {
     if (bits == 12U)
@@ -163,6 +183,7 @@ int GD32_HAL_ADC_Configure(uint32_t adc_address,
         return -1;
     }
 
+    GD32_HAL_ADC_InvalidateCalibration(adc_address);
     adc_deinit(adc_address);
     rcu_adc_clock_config(ADC_ClockDivider(config->clock_divider));
     adc_resolution_config(adc_address, ADC_Resolution(config->resolution_bits));
@@ -209,6 +230,7 @@ void GD32_HAL_ADC_DeInit(uint32_t adc_address)
 {
     if (GD32_HAL_ADC_IsInstance(adc_address) != 0)
     {
+        GD32_HAL_ADC_InvalidateCalibration(adc_address);
         adc_dma_mode_disable(adc_address);
         adc_tempsensor_vrefint_disable();
         adc_deinit(adc_address);
@@ -259,12 +281,16 @@ int GD32_HAL_ADC_EnableAndCalibrate(uint32_t adc_address)
     {
         return -1;
     }
-    if (GD32_HAL_ADC_IsEnabled(adc_address) != 0)
+    if ((GD32_HAL_ADC_IsEnabled(adc_address) != 0) &&
+        (GD32_HAL_ADC_IsCalibrationValid(adc_address) != 0))
     {
         return 0;
     }
 
-    adc_enable(adc_address);
+    if (GD32_HAL_ADC_IsEnabled(adc_address) == 0)
+    {
+        adc_enable(adc_address);
+    }
     apb2_clock = rcu_clock_freq_get(CK_APB2);
     adc_divider_code = (RCU_CFG0 & RCU_CFG0_ADCPSC) >> 14U;
     divider = (adc_divider_code == 0U) ? 2U :
@@ -287,7 +313,23 @@ int GD32_HAL_ADC_EnableAndCalibrate(uint32_t adc_address)
     {
         __NOP();
     }
-    adc_calibration_enable(adc_address);
+    ADC_CTL1(adc_address) |= ADC_CTL1_RSTCLB;
+    if (ADC_WaitControlBitClear(adc_address, ADC_CTL1_RSTCLB) != 0)
+    {
+        GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_ADC_CALIBRATION_TIMEOUT,
+                           ADC_CTL1_RSTCLB);
+        GD32_HAL_ADC_Disable(adc_address);
+        return -1;
+    }
+    ADC_CTL1(adc_address) |= ADC_CTL1_CLB;
+    if (ADC_WaitControlBitClear(adc_address, ADC_CTL1_CLB) != 0)
+    {
+        GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_ADC_CALIBRATION_TIMEOUT,
+                           ADC_CTL1_CLB);
+        GD32_HAL_ADC_Disable(adc_address);
+        return -1;
+    }
+    GD32_HAL_ADC_SetCalibrationValid(adc_address);
     return 0;
 }
 
@@ -295,6 +337,7 @@ void GD32_HAL_ADC_Disable(uint32_t adc_address)
 {
     if (GD32_HAL_ADC_IsInstance(adc_address) != 0)
     {
+        GD32_HAL_ADC_InvalidateCalibration(adc_address);
         adc_disable(adc_address);
     }
 }
@@ -304,6 +347,7 @@ int GD32_HAL_ADC_IsEnabled(uint32_t adc_address)
     return (GD32_HAL_ADC_IsInstance(adc_address) != 0) &&
            ((ADC_CTL1(adc_address) & ADC_CTL1_ADCON) != 0U);
 }
+
 
 void GD32_HAL_ADC_StartSoftware(uint32_t adc_address)
 {

@@ -11,27 +11,10 @@ extern "C" {
 #error "Runtime UART callback registration is not implemented; use weak callbacks"
 #endif
 
-/* 公共 Instance 保持不透明，避免应用访问 STM32 CRx/SR/DR 寄存器布局。 */
-typedef struct GD32_HAL_USART_TypeDef USART_TypeDef;
-
 #ifndef GD32_HAL_DMA_HANDLE_TYPEDEF
 #define GD32_HAL_DMA_HANDLE_TYPEDEF
 typedef struct __DMA_HandleTypeDef DMA_HandleTypeDef;
 #endif
-
-#ifdef USART1
-#undef USART1
-#endif
-#ifdef USART2
-#undef USART2
-#endif
-#ifdef USART6
-#undef USART6
-#endif
-
-#define USART1 ((USART_TypeDef *)(uintptr_t)STM32_UART_INSTANCE_1)
-#define USART2 ((USART_TypeDef *)(uintptr_t)STM32_UART_INSTANCE_2)
-#define USART6 ((USART_TypeDef *)(uintptr_t)STM32_UART_INSTANCE_6)
 
 /* IRQ 值由集中映射头定义，避免 GD32 零起始命名被宏递归改写。 */
 #define USART1_IRQn ((IRQn_Type)STM32_HAL_IRQ_USART1)

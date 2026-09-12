@@ -399,7 +399,7 @@ static int TIM_DMAConfigValid(const TIM_HandleTypeDef *htim,
              TIM_Address(htim),
              (GD32_HAL_TIMERDMARequest)dma_id,
              GD32_HAL_DMA_MappedInstance(hdma),
-             hdma->Init.Channel) == 0))
+             GD32_HAL_DMA_MappedRequest(hdma)) == 0))
     {
         GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_TIMER_DMA_CONFIG_MISMATCH,
                            TIM_Address(htim) | dma_id);

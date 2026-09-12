@@ -342,6 +342,14 @@ static void test_init_and_guards(void)
     assert((hdma.ErrorCode & HAL_DMA_ERROR_REQUEST) != 0U);
     assert(mock_last_port_error == GD32_HAL_PORT_ERROR_DMA_REQUEST_MISMATCH);
 
+    hdma = mock_handle(DMA2_Stream7, DMA_CHANNEL_4,
+                       DMA_MEMORY_TO_PERIPH);
+    assert(HAL_DMA_Init(&hdma) == HAL_OK);
+    assert(hdma.GD32_INSTANCE == GD32_HAL_DMA0_CHANNEL3_ADDRESS);
+    assert(hdma.GD32_REQUEST == GD32_DMA_REQUEST_USART0_TX);
+    assert(hdma.Init.Channel == DMA_CHANNEL_4);
+    assert(hdma.GD32_RESOLVED_FROM == (uintptr_t)DMA2_Stream7);
+
     hdma = mock_handle(GD32_DMA0_CHANNEL3,
                        GD32_DMA_REQUEST_USART0_TX,
                        DMA_MEMORY_TO_PERIPH);

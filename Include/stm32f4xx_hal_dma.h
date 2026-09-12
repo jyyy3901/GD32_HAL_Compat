@@ -10,6 +10,23 @@ extern "C" {
 /* Instance 保持不透明，禁止上层按 STM32 Stream 寄存器布局访问。 */
 typedef struct GD32_HAL_DMA_Stream_TypeDef DMA_Stream_TypeDef;
 
+#define DMA1_Stream0 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA1_STREAM0)
+#define DMA1_Stream1 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA1_STREAM1)
+#define DMA1_Stream2 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA1_STREAM2)
+#define DMA1_Stream3 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA1_STREAM3)
+#define DMA1_Stream4 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA1_STREAM4)
+#define DMA1_Stream5 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA1_STREAM5)
+#define DMA1_Stream6 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA1_STREAM6)
+#define DMA1_Stream7 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA1_STREAM7)
+#define DMA2_Stream0 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA2_STREAM0)
+#define DMA2_Stream1 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA2_STREAM1)
+#define DMA2_Stream2 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA2_STREAM2)
+#define DMA2_Stream3 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA2_STREAM3)
+#define DMA2_Stream4 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA2_STREAM4)
+#define DMA2_Stream5 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA2_STREAM5)
+#define DMA2_Stream6 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA2_STREAM6)
+#define DMA2_Stream7 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA2_STREAM7)
+
 #define GD32_DMA0_CHANNEL0 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA0_CHANNEL0)
 #define GD32_DMA0_CHANNEL1 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA0_CHANNEL1)
 #define GD32_DMA0_CHANNEL2 ((DMA_Stream_TypeDef *)(uintptr_t)STM32_DMA0_CHANNEL2)
@@ -154,6 +171,8 @@ struct __DMA_HandleTypeDef
     uint32_t GD32_INSTANCE;
     uint32_t gd32_dma_periph;
     uint32_t gd32_dma_channel;
+    uint32_t GD32_REQUEST;
+    uintptr_t GD32_RESOLVED_FROM;
     int32_t GD32_IRQ_NUMBER;
     const GD32_HAL_Resource *GD32_RESOURCE;
 };
@@ -171,13 +190,27 @@ static inline uint32_t GD32_HAL_DMA_MappedInstance(const DMA_HandleTypeDef *hdma
         return 0U;
     }
     if ((hdma->GD32_RESOURCE != NULL) &&
-        (hdma->GD32_RESOURCE->stm32_instance == (uintptr_t)hdma->Instance))
+        (hdma->GD32_RESOLVED_FROM == (uintptr_t)hdma->Instance))
     {
         return hdma->GD32_INSTANCE;
     }
     resource = GD32_HAL_ResolveInstance((uintptr_t)hdma->Instance,
                                         GD32_HAL_RESOURCE_DMA);
     return (resource != NULL) ? resource->gd32_instance : 0U;
+}
+
+static inline uint32_t GD32_HAL_DMA_MappedRequest(const DMA_HandleTypeDef *hdma)
+{
+    if (hdma == NULL)
+    {
+        return GD32_HAL_DMA_REQUEST_MEMORY;
+    }
+    if ((hdma->GD32_RESOURCE != NULL) &&
+        (hdma->GD32_RESOLVED_FROM == (uintptr_t)hdma->Instance))
+    {
+        return hdma->GD32_REQUEST;
+    }
+    return hdma->Init.Channel;
 }
 
 #define HAL_DMA_ERROR_NONE             0x00000000U
