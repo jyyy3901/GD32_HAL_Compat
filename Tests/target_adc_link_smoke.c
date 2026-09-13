@@ -4,7 +4,7 @@ uint32_t SystemCoreClock = 120000000U;
 
 static ADC_HandleTypeDef targetADC;
 static DMA_HandleTypeDef targetADCDMA;
-static uint32_t targetSamples[2];
+static uint16_t targetSamples[2];
 
 void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
 {
@@ -43,8 +43,8 @@ void TargetSmoke(void)
     targetADCDMA.Init.Direction = DMA_PERIPH_TO_MEMORY;
     targetADCDMA.Init.PeriphInc = DMA_PINC_DISABLE;
     targetADCDMA.Init.MemInc = DMA_MINC_ENABLE;
-    targetADCDMA.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
-    targetADCDMA.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+    targetADCDMA.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    targetADCDMA.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
     targetADCDMA.Init.Mode = DMA_NORMAL;
     targetADCDMA.Init.Priority = DMA_PRIORITY_HIGH;
     targetADCDMA.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
@@ -70,7 +70,7 @@ void TargetSmoke(void)
     (void)HAL_ADC_Start_IT(&targetADC);
     HAL_ADC_IRQHandler(&targetADC);
     (void)HAL_ADC_Stop_IT(&targetADC);
-    (void)HAL_ADC_Start_DMA(&targetADC, targetSamples, 2U);
+    (void)HAL_ADC_Start_DMA(&targetADC, (uint32_t *)(void *)targetSamples, 2U);
     (void)HAL_ADC_Stop_DMA(&targetADC);
     (void)HAL_ADC_DeInit(&targetADC);
 }

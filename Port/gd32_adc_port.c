@@ -32,6 +32,7 @@ static int ADC_WaitControlBitClear(uint32_t adc_address, uint32_t bit)
             return -1;
         }
         --timeout;
+        __NOP();
     }
     return 0;
 }
@@ -289,7 +290,14 @@ int GD32_HAL_ADC_EnableAndCalibrate(uint32_t adc_address)
 
     if (GD32_HAL_ADC_IsEnabled(adc_address) == 0)
     {
+        /* ADCON=0 powers off the analog block and invalidates its factor. */
+        GD32_HAL_ADC_InvalidateCalibration(adc_address);
         adc_enable(adc_address);
+    }
+    else
+    {
+        /* Keep invalid until both reset-calibration and calibration complete. */
+        GD32_HAL_ADC_InvalidateCalibration(adc_address);
     }
     apb2_clock = rcu_clock_freq_get(CK_APB2);
     adc_divider_code = (RCU_CFG0 & RCU_CFG0_ADCPSC) >> 14U;
@@ -299,7 +307,7 @@ int GD32_HAL_ADC_EnableAndCalibrate(uint32_t adc_address)
     if (apb2_clock == 0U)
     {
         GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_ADC_INVALID_CONFIG, 0U);
-        adc_disable(adc_address);
+        GD32_HAL_ADC_Disable(adc_address);
         return -1;
     }
     loops = (SystemCoreClock / apb2_clock) +

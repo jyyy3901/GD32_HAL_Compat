@@ -606,6 +606,32 @@ int GD32_HAL_TIMER_IsDMAChannelValid(uint32_t timer_address,
     return 0;
 }
 
+int GD32_HAL_TIMER_GetDMAMapping(uint32_t timer_address,
+                                 GD32_HAL_TIMERDMARequest request,
+                                 uint32_t *channel_address,
+                                 uint32_t *request_token)
+{
+    size_t index;
+
+    if ((channel_address == NULL) || (request_token == NULL))
+    {
+        return 0;
+    }
+    for (index = 0U;
+         index < (sizeof(timerDMAMap) / sizeof(timerDMAMap[0]));
+         ++index)
+    {
+        if ((timerDMAMap[index].timer == timer_address) &&
+            (timerDMAMap[index].request == request))
+        {
+            *channel_address = timerDMAMap[index].channel;
+            *request_token = timerDMAMap[index].token;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 uint32_t GD32_HAL_TIMER_GetDMADataAddress(uint32_t timer_address,
                                           GD32_HAL_TIMERDMARequest request)
 {

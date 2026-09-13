@@ -34,6 +34,12 @@ static uint32_t mock_oc_callback_count;
 static uint32_t mock_pwm_callback_count;
 static uint32_t mock_ic_callback_count;
 static uint32_t mock_trigger_callback_count;
+static const GD32_HAL_Resource mock_dma_ch1_resource =
+    {0U, 0U, GD32_HAL_DMA0_CHANNEL1_ADDRESS, GD32_HAL_DMA0_ADDRESS,
+     0U, 12, GD32_HAL_CAP_DMA, 0U, 1U};
+static const GD32_HAL_Resource mock_dma_ch4_resource =
+    {0U, 0U, GD32_HAL_DMA0_CHANNEL4_ADDRESS, GD32_HAL_DMA0_ADDRESS,
+     0U, 15, GD32_HAL_CAP_DMA, 0U, 4U};
 static HAL_TIM_ActiveChannel mock_callback_channel;
 
 static void mock_reset(void)
@@ -235,6 +241,48 @@ int GD32_HAL_TIMER_IsDMAChannelValid(uint32_t timer_address,
             (request_token == GD32_DMA_REQUEST_TIMER1_UP));
 }
 
+HAL_StatusTypeDef GD32_HAL_DMA_ResolveForTimer(
+    DMA_HandleTypeDef *hdma,
+    uint32_t timer_address,
+    GD32_HAL_TIMERDMARequest request)
+{
+    if (hdma->GD32_DEFERRED == 0U)
+    {
+        return HAL_OK;
+    }
+    if ((timer_address == GD32_HAL_TIMER1_ADDRESS) &&
+        (request == GD32_HAL_TIMER_DMA_CC1) &&
+        (hdma->Instance == DMA1_Stream5) &&
+        (hdma->Init.Channel == DMA_CHANNEL_3))
+    {
+        hdma->GD32_RESOURCE = &mock_dma_ch4_resource;
+        hdma->GD32_INSTANCE = GD32_HAL_DMA0_CHANNEL4_ADDRESS;
+        hdma->gd32_dma_periph = GD32_HAL_DMA0_ADDRESS;
+        hdma->gd32_dma_channel = 4U;
+        hdma->GD32_REQUEST = GD32_DMA_REQUEST_TIMER1_CH0;
+    }
+    else if ((timer_address == GD32_HAL_TIMER1_ADDRESS) &&
+             (request == GD32_HAL_TIMER_DMA_UPDATE) &&
+             (hdma->Instance == DMA1_Stream1) &&
+             (hdma->Init.Channel == DMA_CHANNEL_3))
+    {
+        hdma->GD32_RESOURCE = &mock_dma_ch1_resource;
+        hdma->GD32_INSTANCE = GD32_HAL_DMA0_CHANNEL1_ADDRESS;
+        hdma->gd32_dma_periph = GD32_HAL_DMA0_ADDRESS;
+        hdma->gd32_dma_channel = 1U;
+        hdma->GD32_REQUEST = GD32_DMA_REQUEST_TIMER1_UP;
+    }
+    else
+    {
+        GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_TIMER_DMA_UNSUPPORTED,
+                           timer_address | (uint32_t)request);
+        return HAL_ERROR;
+    }
+    hdma->GD32_RESOLVED_FROM = (uintptr_t)hdma->Instance;
+    hdma->GD32_DEFERRED = 0U;
+    return HAL_OK;
+}
+
 uint32_t GD32_HAL_TIMER_GetDMADataAddress(uint32_t timer_address,
                                           GD32_HAL_TIMERDMARequest request)
 {
@@ -260,6 +308,19 @@ HAL_StatusTypeDef HAL_DMA_Start_IT(DMA_HandleTypeDef *hdma,
     mock_dma_destination = DstAddress;
     mock_dma_length = DataLength;
     hdma->State = HAL_DMA_STATE_BUSY;
+    return HAL_OK;
+}
+
+HAL_StatusTypeDef HAL_DMA_Init(DMA_HandleTypeDef *hdma)
+{
+    if ((hdma == NULL) || (hdma->Instance == NULL))
+    {
+        return HAL_ERROR;
+    }
+    hdma->GD32_DEFERRED = 1U;
+    hdma->GD32_RESOURCE = NULL;
+    hdma->GD32_INSTANCE = 0U;
+    hdma->State = HAL_DMA_STATE_READY;
     return HAL_OK;
 }
 
@@ -416,18 +477,18 @@ static void test_pwm_dma(void)
     TIM_HandleTypeDef htim = mock_handle(TIM2);
     DMA_HandleTypeDef hdma;
     TIM_OC_InitTypeDef oc = {0};
-    uint32_t pulses[] = {100U, 200U, 300U};
+    uint16_t pulses[] = {100U, 200U, 300U};
 
     memset(&hdma, 0, sizeof(hdma));
-    hdma.Instance = GD32_DMA0_CHANNEL4;
-    hdma.Init.Channel = GD32_DMA_REQUEST_TIMER1_CH0;
+    hdma.Instance = DMA1_Stream5;
+    hdma.Init.Channel = DMA_CHANNEL_3;
     hdma.Init.Direction = DMA_MEMORY_TO_PERIPH;
     hdma.Init.PeriphInc = DMA_PINC_DISABLE;
     hdma.Init.MemInc = DMA_MINC_ENABLE;
-    hdma.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
-    hdma.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+    hdma.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    hdma.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
     hdma.Init.Mode = DMA_NORMAL;
-    hdma.State = HAL_DMA_STATE_READY;
+    assert(HAL_DMA_Init(&hdma) == HAL_OK);
 
     assert(HAL_TIM_PWM_Init(&htim) == HAL_OK);
     oc.OCMode = TIM_OCMODE_PWM1;
@@ -435,12 +496,17 @@ static void test_pwm_dma(void)
     oc.OCPolarity = TIM_OCPOLARITY_HIGH;
     oc.OCFastMode = TIM_OCFAST_DISABLE;
     assert(HAL_TIM_PWM_ConfigChannel(&htim, &oc, TIM_CHANNEL_1) == HAL_OK);
-    htim.hdma[TIM_DMA_ID_CC1] = &hdma;
-    hdma.Parent = &htim;
-    assert(HAL_TIM_PWM_Start_DMA(&htim, TIM_CHANNEL_1, pulses, 3U) == HAL_OK);
+    __HAL_LINKDMA(&htim, hdma[TIM_DMA_ID_CC1], hdma);
+    assert(HAL_TIM_PWM_Start_DMA(&htim, TIM_CHANNEL_1,
+                                 (const uint32_t *)(const void *)pulses,
+                                 3U) == HAL_OK);
     assert(mock_dma_start_count == 1U);
     assert(mock_dma_length == 3U);
     assert(mock_dma_destination == GD32_HAL_TIMER1_ADDRESS + 0x34U);
+    assert(hdma.GD32_INSTANCE == GD32_HAL_DMA0_CHANNEL4_ADDRESS);
+    assert(hdma.gd32_dma_periph == GD32_HAL_DMA0_ADDRESS);
+    assert(hdma.gd32_dma_channel == 4U);
+    assert(hdma.GD32_REQUEST == GD32_DMA_REQUEST_TIMER1_CH0);
     assert((mock_dma_requests & (1UL << GD32_HAL_TIMER_DMA_CC1)) != 0U);
     hdma.XferCpltCallback(&hdma);
     assert(HAL_TIM_GetChannelState(&htim, TIM_CHANNEL_1) == HAL_TIM_CHANNEL_STATE_READY);
@@ -452,6 +518,101 @@ static void test_pwm_dma(void)
     assert(HAL_TIM_PWM_Stop_DMA(&htim, TIM_CHANNEL_1) == HAL_OK);
     assert(mock_channel_enabled[0] == 0U);
     assert((mock_dma_requests & (1UL << GD32_HAL_TIMER_DMA_CC1)) == 0U);
+
+    hdma.Init.Mode = DMA_CIRCULAR;
+    assert(HAL_TIM_PWM_Start_DMA(&htim, TIM_CHANNEL_1,
+                                 (const uint32_t *)(const void *)pulses,
+                                 3U) == HAL_OK);
+    hdma.XferCpltCallback(&hdma);
+    assert(HAL_TIM_GetChannelState(&htim, TIM_CHANNEL_1) ==
+           HAL_TIM_CHANNEL_STATE_BUSY);
+    assert(HAL_TIM_PWM_Stop_DMA(&htim, TIM_CHANNEL_1) == HAL_OK);
+}
+
+static void test_oc_ic_dma_width_and_guards(void)
+{
+    TIM_HandleTypeDef htim = mock_handle(TIM2);
+    DMA_HandleTypeDef hdma;
+    TIM_OC_InitTypeDef oc = {0};
+    TIM_IC_InitTypeDef ic = {0};
+    uint32_t word_values[] = {100U, 0x10000U};
+    uint16_t half_values[] = {10U, 20U};
+    uint32_t alignment_storage[2] = {0U};
+    DMA_HandleTypeDef unsupported;
+
+    memset(&hdma, 0, sizeof(hdma));
+    hdma.Instance = GD32_DMA0_CHANNEL4;
+    hdma.Init.Channel = GD32_DMA_REQUEST_TIMER1_CH0;
+    hdma.Init.Direction = DMA_MEMORY_TO_PERIPH;
+    hdma.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma.Init.MemInc = DMA_MINC_ENABLE;
+    hdma.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+    hdma.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+    hdma.Init.Mode = DMA_NORMAL;
+    hdma.State = HAL_DMA_STATE_READY;
+    hdma.Parent = &htim;
+    htim.hdma[TIM_DMA_ID_CC1] = &hdma;
+
+    assert(HAL_TIM_OC_Init(&htim) == HAL_OK);
+    oc.OCMode = TIM_OCMODE_TOGGLE;
+    oc.Pulse = 10U;
+    oc.OCPolarity = TIM_OCPOLARITY_HIGH;
+    assert(HAL_TIM_OC_ConfigChannel(&htim, &oc, TIM_CHANNEL_1) == HAL_OK);
+    assert(HAL_TIM_OC_Start_DMA(&htim, TIM_CHANNEL_1, word_values, 2U) ==
+           HAL_ERROR);
+    assert(mock_error == GD32_HAL_PORT_ERROR_TIMER_16BIT_RANGE);
+
+    word_values[1] = 200U;
+    hdma.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    assert(HAL_TIM_OC_Start_DMA(&htim, TIM_CHANNEL_1, word_values, 2U) ==
+           HAL_ERROR);
+    hdma.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    assert(HAL_TIM_OC_Start_DMA(
+               &htim, TIM_CHANNEL_1,
+               (const uint32_t *)(const void *)((uint8_t *)alignment_storage + 1U),
+               1U) == HAL_ERROR);
+
+    memset(&hdma, 0, sizeof(hdma));
+    hdma.Instance = DMA1_Stream5;
+    hdma.Init.Channel = DMA_CHANNEL_3;
+    hdma.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma.Init.MemInc = DMA_MINC_ENABLE;
+    hdma.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    hdma.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    hdma.Init.Mode = DMA_NORMAL;
+    assert(HAL_DMA_Init(&hdma) == HAL_OK);
+    assert(HAL_TIM_IC_Init(&htim) == HAL_OK);
+    ic.ICPolarity = TIM_ICPOLARITY_RISING;
+    ic.ICSelection = TIM_ICSELECTION_DIRECTTI;
+    ic.ICPrescaler = TIM_ICPSC_DIV1;
+    assert(HAL_TIM_IC_ConfigChannel(&htim, &ic, TIM_CHANNEL_1) == HAL_OK);
+    __HAL_LINKDMA(&htim, hdma[TIM_DMA_ID_CC1], hdma);
+    assert(HAL_TIM_IC_Start_DMA(&htim, TIM_CHANNEL_1,
+                                (uint32_t *)(void *)half_values, 2U) == HAL_OK);
+    assert(mock_dma_source == GD32_HAL_TIMER1_ADDRESS + 0x34U);
+    assert(mock_dma_destination == (uint32_t)(uintptr_t)half_values);
+    assert(hdma.GD32_INSTANCE == GD32_HAL_DMA0_CHANNEL4_ADDRESS);
+    assert(hdma.GD32_REQUEST == GD32_DMA_REQUEST_TIMER1_CH0);
+    hdma.XferCpltCallback(&hdma);
+    assert(mock_ic_callback_count == 1U);
+    assert(HAL_TIM_IC_Stop_DMA(&htim, TIM_CHANNEL_1) == HAL_OK);
+
+    memset(&unsupported, 0, sizeof(unsupported));
+    unsupported.Instance = DMA1_Stream1;
+    unsupported.Init.Channel = DMA_CHANNEL_3;
+    unsupported.Init.Direction = DMA_MEMORY_TO_PERIPH;
+    unsupported.Init.PeriphInc = DMA_PINC_DISABLE;
+    unsupported.Init.MemInc = DMA_MINC_ENABLE;
+    unsupported.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    unsupported.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    unsupported.Init.Mode = DMA_NORMAL;
+    assert(HAL_DMA_Init(&unsupported) == HAL_OK);
+    __HAL_LINKDMA(&htim, hdma[TIM_DMA_ID_CC2], unsupported);
+    assert(HAL_TIM_PWM_Start_DMA(
+               &htim, TIM_CHANNEL_2,
+               (const uint32_t *)(const void *)half_values, 2U) == HAL_ERROR);
+    assert(mock_error == GD32_HAL_PORT_ERROR_TIMER_DMA_UNSUPPORTED);
 }
 
 static void test_base_dma(void)
@@ -461,21 +622,22 @@ static void test_base_dma(void)
     uint32_t periods[] = {999U, 499U};
 
     memset(&hdma, 0, sizeof(hdma));
-    hdma.Instance = GD32_DMA0_CHANNEL1;
-    hdma.Init.Channel = GD32_DMA_REQUEST_TIMER1_UP;
+    hdma.Instance = DMA1_Stream1;
+    hdma.Init.Channel = DMA_CHANNEL_3;
     hdma.Init.Direction = DMA_MEMORY_TO_PERIPH;
     hdma.Init.PeriphInc = DMA_PINC_DISABLE;
     hdma.Init.MemInc = DMA_MINC_ENABLE;
     hdma.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
     hdma.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
     hdma.Init.Mode = DMA_NORMAL;
-    hdma.State = HAL_DMA_STATE_READY;
+    assert(HAL_DMA_Init(&hdma) == HAL_OK);
 
     assert(HAL_TIM_Base_Init(&htim) == HAL_OK);
-    htim.hdma[TIM_DMA_ID_UPDATE] = &hdma;
-    hdma.Parent = &htim;
+    __HAL_LINKDMA(&htim, hdma[TIM_DMA_ID_UPDATE], hdma);
     assert(HAL_TIM_Base_Start_DMA(&htim, periods, 2U) == HAL_OK);
     assert(mock_dma_destination == GD32_HAL_TIMER1_ADDRESS + 0x2CU);
+    assert(hdma.GD32_INSTANCE == GD32_HAL_DMA0_CHANNEL1_ADDRESS);
+    assert(hdma.GD32_REQUEST == GD32_DMA_REQUEST_TIMER1_UP);
     assert((mock_dma_requests & (1UL << GD32_HAL_TIMER_DMA_UPDATE)) != 0U);
     hdma.XferCpltCallback(&hdma);
     assert(htim.State == HAL_TIM_STATE_READY);
@@ -496,6 +658,8 @@ int main(void)
     test_master_slave_and_one_pulse();
     mock_reset();
     test_pwm_dma();
+    mock_reset();
+    test_oc_ic_dma_width_and_guards();
     mock_reset();
     test_base_dma();
     puts("TIM host tests: PASS");

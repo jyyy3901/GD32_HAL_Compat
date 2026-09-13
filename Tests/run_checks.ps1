@@ -193,14 +193,19 @@ Write-Output 'FLASH ARM weak callback symbols: PASS'
 $timLinkBuild = Join-Path $armBuild 'tim_link'
 New-Item -ItemType Directory -Force -Path $timLinkBuild | Out-Null
 $timLinkSources = @(
+    (Join-Path $project 'Source\stm32f4xx_hal.c'),
+    (Join-Path $project 'Source\stm32f4xx_hal_dma.c'),
     (Join-Path $project 'Source\stm32f4xx_hal_tim.c'),
     (Join-Path $project 'Source\stm32f4xx_hal_tim_ex.c'),
     (Join-Path $project 'Source\stm32f4xx_hal_tim_callbacks.c'),
+    (Join-Path $project 'Port\gd32_core_port.c'),
+    (Join-Path $project 'Port\gd32_dma_port.c'),
     (Join-Path $project 'Port\gd32_timer_port.c'),
     (Join-Path $project 'Port\stm32_timer_trigger_map.c'),
     (Join-Path $project 'Port\gd32_instance_map.c'),
     (Join-Path $PSScriptRoot 'target_tim_link_smoke.c'),
     (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_timer.c'),
+    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_dma.c'),
     (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_rcu.c')
 )
 $timLinkObjects = @()
@@ -643,6 +648,25 @@ if ($LASTEXITCODE -ne 0) {
 & $adcHostExe
 if ($LASTEXITCODE -ne 0) {
     throw "ADC host test failed: $LASTEXITCODE"
+}
+
+$adcCalibrationPortHostExe = Join-Path $build 'test_adc_calibration_port_host.exe'
+& $gcc -std=c11 -Wall -Wextra -Werror `
+    -I (Join-Path $PSScriptRoot 'ADCMocks') `
+    -I (Join-Path $PSScriptRoot 'HostMocks') `
+    -I (Join-Path $project 'Include') `
+    -I (Join-Path $project 'Port') `
+    (Join-Path $project 'Port\gd32_adc_port.c') `
+    (Join-Path $project 'Port\gd32_instance_map.c') `
+    (Join-Path $PSScriptRoot 'test_adc_calibration_port_host.c') `
+    -o $adcCalibrationPortHostExe
+if ($LASTEXITCODE -ne 0) {
+    throw "ADC calibration Port host test build failed: $LASTEXITCODE"
+}
+
+& $adcCalibrationPortHostExe
+if ($LASTEXITCODE -ne 0) {
+    throw "ADC calibration Port host test failed: $LASTEXITCODE"
 }
 
 $i2cHostExe = Join-Path $build 'test_i2c_host.exe'

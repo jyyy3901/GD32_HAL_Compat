@@ -1,4 +1,4 @@
-# 0.10.0 限制与兼容等级
+# 0.10.1 限制与兼容等级
 
 ## API 状态
 
@@ -20,7 +20,8 @@
 - DMA FIFO、Burst、PFCTRL、double buffer 没有等价实现，非默认配置返回 `HAL_ERROR` 或编译失败。
 - GD32F403 TIMER 全部为 16 位；TIM2/TIM5 超出 `0xFFFF` 的 Period/Counter/CCR 不截断，明确失败。
 - TIM2/TIM5 直接 CNT/ARR/CCR 写无法被 HAL 拦截，属于 conditional/unsafe register compatibility。
-- ADC direct `ADON` 后再调用任一 HAL Start 会补做校准；direct `ADON+SWSTART` 在 strict mode 不支持。
+- ADC 在 HAL 进入时检测到 `ADON=0` 会使 calibration-valid 失效并重新校准；direct `ADON+SWSTART` 在 strict mode 不支持。
+- 应用若在两次 compatibility-layer 调用之间直接清除又重新置位 `ADON`，最终寄存器状态与“从未掉电”相同，纯 C 寄存器 overlay 无法观测这段历史；该序列不能透明保证重新校准，必须改走 `HAL_ADC_Stop()/HAL_ADC_Start()` 或在掉电期间调用兼容层。此限制不做假兼容声明。
 - GPIO MODER/OTYPER/OSPEEDR/PUPDR/AFR、RCC、I2C、DMA Stream、FLASH/FMC 的整块 STM32 register overlay 不提供。
 - TIMER Encoder、Hall、dead-time/break、complementary output、DMA burst 不在 0.10.0 范围。
 - ADC falling/both external trigger edge、480-cycle sampling、不可映射 trigger、per-conversion EOC 序列语义不伪造。
@@ -35,4 +36,4 @@ STM32F401VEH6 与 GD32F403RET6 不是引脚兼容替换。源器件存在而目�
 
 ## 板级待验证
 
-必须验证时钟、NVIC 优先级、共享 IRQ、UART 波特率/错误注入、DMA 请求冲突与 normal/circular 状态、TIMER PWM/捕获/级联/TRGO、ADC 输入范围/采样时间/触发/DMA/校准，以及所有目标引脚和 AFIO remap。0.10.0 的代码检查结果不等于硬件或量产签核。
+必须验证时钟、NVIC 优先级、共享 IRQ、UART 波特率/错误注入、DMA 请求冲突与 normal/circular 状态、TIMER PWM/捕获/级联/TRGO、ADC 输入范围/采样时间/触发/DMA/校准，以及所有目标引脚和 AFIO remap。0.10.1 的代码检查结果不等于硬件或量产签核。

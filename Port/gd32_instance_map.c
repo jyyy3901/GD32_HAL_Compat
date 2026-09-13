@@ -157,6 +157,25 @@ const GD32_HAL_Resource *GD32_HAL_ResolveInstance(uintptr_t stm32_instance,
     return NULL;
 }
 
+const GD32_HAL_Resource *GD32_HAL_ResolveDMAChannelAddress(
+    uint32_t channel_address)
+{
+    size_t index;
+
+    for (index = 0U;
+         index < (sizeof(gd32HalResources) / sizeof(gd32HalResources[0]));
+         ++index)
+    {
+        if ((GD32_HAL_KindOf(&gd32HalResources[index]) ==
+             GD32_HAL_RESOURCE_DMA) &&
+            (gd32HalResources[index].gd32_instance == channel_address))
+        {
+            return &gd32HalResources[index];
+        }
+    }
+    return NULL;
+}
+
 typedef struct
 {
     uintptr_t stream;
@@ -235,6 +254,130 @@ static const GD32_HAL_DMAStreamMap gd32HalDMAStreamMap[] =
     {STM32_DMA1_STREAM7, 0x0E000000UL, STM32_DMA_DIR_MEMORY_TO_PERIPH,
      STM32_DMA0_CHANNEL3, GD32_HAL_DMA_REQUEST_ENCODE(0U, 3U, 2U)}  /* I2C2 TX */
 };
+
+typedef struct
+{
+    uintptr_t stream;
+    uint32_t channel;
+    uint8_t logical_timer;
+    GD32_HAL_TIMERDMARequest request;
+} GD32_HAL_STM32TimerDMAStreamMap;
+
+#define STM32_TIM_DMA(STREAM, CHANNEL, TIMER, REQUEST) \
+    {(STREAM), (CHANNEL), (TIMER), (REQUEST)}
+
+/* STM32F401 RM0368 tables 28/29. Event identity is deliberately retained. */
+static const GD32_HAL_STM32TimerDMAStreamMap gd32HalSTM32TimerDMAStreamMap[] =
+{
+    STM32_TIM_DMA(STM32_DMA2_STREAM6, 0x00000000UL, 1U, GD32_HAL_TIMER_DMA_CC1),
+    STM32_TIM_DMA(STM32_DMA2_STREAM6, 0x00000000UL, 1U, GD32_HAL_TIMER_DMA_CC2),
+    STM32_TIM_DMA(STM32_DMA2_STREAM6, 0x00000000UL, 1U, GD32_HAL_TIMER_DMA_CC3),
+    STM32_TIM_DMA(STM32_DMA2_STREAM0, 0x0C000000UL, 1U, GD32_HAL_TIMER_DMA_TRIGGER),
+    STM32_TIM_DMA(STM32_DMA2_STREAM1, 0x0C000000UL, 1U, GD32_HAL_TIMER_DMA_CC1),
+    STM32_TIM_DMA(STM32_DMA2_STREAM2, 0x0C000000UL, 1U, GD32_HAL_TIMER_DMA_CC2),
+    STM32_TIM_DMA(STM32_DMA2_STREAM3, 0x0C000000UL, 1U, GD32_HAL_TIMER_DMA_CC1),
+    STM32_TIM_DMA(STM32_DMA2_STREAM4, 0x0C000000UL, 1U, GD32_HAL_TIMER_DMA_CC4),
+    STM32_TIM_DMA(STM32_DMA2_STREAM4, 0x0C000000UL, 1U, GD32_HAL_TIMER_DMA_TRIGGER),
+    STM32_TIM_DMA(STM32_DMA2_STREAM4, 0x0C000000UL, 1U, GD32_HAL_TIMER_DMA_COM),
+    STM32_TIM_DMA(STM32_DMA2_STREAM5, 0x0C000000UL, 1U, GD32_HAL_TIMER_DMA_UPDATE),
+    STM32_TIM_DMA(STM32_DMA2_STREAM6, 0x0C000000UL, 1U, GD32_HAL_TIMER_DMA_CC3),
+
+    STM32_TIM_DMA(STM32_DMA1_STREAM1, 0x06000000UL, 2U, GD32_HAL_TIMER_DMA_UPDATE),
+    STM32_TIM_DMA(STM32_DMA1_STREAM1, 0x06000000UL, 2U, GD32_HAL_TIMER_DMA_CC3),
+    STM32_TIM_DMA(STM32_DMA1_STREAM5, 0x06000000UL, 2U, GD32_HAL_TIMER_DMA_CC1),
+    STM32_TIM_DMA(STM32_DMA1_STREAM6, 0x06000000UL, 2U, GD32_HAL_TIMER_DMA_CC2),
+    STM32_TIM_DMA(STM32_DMA1_STREAM6, 0x06000000UL, 2U, GD32_HAL_TIMER_DMA_CC4),
+    STM32_TIM_DMA(STM32_DMA1_STREAM7, 0x06000000UL, 2U, GD32_HAL_TIMER_DMA_UPDATE),
+    STM32_TIM_DMA(STM32_DMA1_STREAM7, 0x06000000UL, 2U, GD32_HAL_TIMER_DMA_CC4),
+
+    STM32_TIM_DMA(STM32_DMA1_STREAM2, 0x0A000000UL, 3U, GD32_HAL_TIMER_DMA_CC4),
+    STM32_TIM_DMA(STM32_DMA1_STREAM2, 0x0A000000UL, 3U, GD32_HAL_TIMER_DMA_UPDATE),
+    STM32_TIM_DMA(STM32_DMA1_STREAM4, 0x0A000000UL, 3U, GD32_HAL_TIMER_DMA_CC1),
+    STM32_TIM_DMA(STM32_DMA1_STREAM4, 0x0A000000UL, 3U, GD32_HAL_TIMER_DMA_TRIGGER),
+    STM32_TIM_DMA(STM32_DMA1_STREAM5, 0x0A000000UL, 3U, GD32_HAL_TIMER_DMA_CC2),
+    STM32_TIM_DMA(STM32_DMA1_STREAM7, 0x0A000000UL, 3U, GD32_HAL_TIMER_DMA_CC3),
+
+    STM32_TIM_DMA(STM32_DMA1_STREAM0, 0x04000000UL, 4U, GD32_HAL_TIMER_DMA_CC1),
+    STM32_TIM_DMA(STM32_DMA1_STREAM3, 0x04000000UL, 4U, GD32_HAL_TIMER_DMA_CC2),
+    STM32_TIM_DMA(STM32_DMA1_STREAM6, 0x04000000UL, 4U, GD32_HAL_TIMER_DMA_UPDATE),
+    STM32_TIM_DMA(STM32_DMA1_STREAM7, 0x04000000UL, 4U, GD32_HAL_TIMER_DMA_CC3),
+
+    STM32_TIM_DMA(STM32_DMA1_STREAM0, 0x0C000000UL, 5U, GD32_HAL_TIMER_DMA_CC3),
+    STM32_TIM_DMA(STM32_DMA1_STREAM0, 0x0C000000UL, 5U, GD32_HAL_TIMER_DMA_UPDATE),
+    STM32_TIM_DMA(STM32_DMA1_STREAM1, 0x0C000000UL, 5U, GD32_HAL_TIMER_DMA_CC4),
+    STM32_TIM_DMA(STM32_DMA1_STREAM1, 0x0C000000UL, 5U, GD32_HAL_TIMER_DMA_TRIGGER),
+    STM32_TIM_DMA(STM32_DMA1_STREAM2, 0x0C000000UL, 5U, GD32_HAL_TIMER_DMA_CC1),
+    STM32_TIM_DMA(STM32_DMA1_STREAM3, 0x0C000000UL, 5U, GD32_HAL_TIMER_DMA_CC4),
+    STM32_TIM_DMA(STM32_DMA1_STREAM3, 0x0C000000UL, 5U, GD32_HAL_TIMER_DMA_TRIGGER),
+    STM32_TIM_DMA(STM32_DMA1_STREAM4, 0x0C000000UL, 5U, GD32_HAL_TIMER_DMA_CC2),
+    STM32_TIM_DMA(STM32_DMA1_STREAM6, 0x0C000000UL, 5U, GD32_HAL_TIMER_DMA_UPDATE)
+};
+
+#undef STM32_TIM_DMA
+
+int GD32_HAL_DMAStreamHasTimerCandidate(uintptr_t stream_instance,
+                                        uint32_t stm32_channel,
+                                        uint32_t stm32_direction)
+{
+    size_t index;
+
+    if ((stm32_direction != STM32_DMA_DIR_PERIPH_TO_MEMORY) &&
+        (stm32_direction != STM32_DMA_DIR_MEMORY_TO_PERIPH))
+    {
+        return 0;
+    }
+    for (index = 0U;
+         index < (sizeof(gd32HalSTM32TimerDMAStreamMap) /
+                  sizeof(gd32HalSTM32TimerDMAStreamMap[0]));
+         ++index)
+    {
+        if ((gd32HalSTM32TimerDMAStreamMap[index].stream == stream_instance) &&
+            (gd32HalSTM32TimerDMAStreamMap[index].channel == stm32_channel))
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int GD32_HAL_DMAStreamMatchesTimer(
+    uintptr_t stream_instance,
+    uint32_t stm32_channel,
+    uint32_t stm32_direction,
+    uint32_t timer_address,
+    GD32_HAL_TIMERDMARequest request)
+{
+    const GD32_HAL_Resource *timer_resource;
+    size_t index;
+
+    if ((stm32_direction != STM32_DMA_DIR_PERIPH_TO_MEMORY) &&
+        (stm32_direction != STM32_DMA_DIR_MEMORY_TO_PERIPH))
+    {
+        return 0;
+    }
+    timer_resource = GD32_HAL_ResolveInstance((uintptr_t)timer_address,
+                                               GD32_HAL_RESOURCE_TIMER);
+    if (timer_resource == NULL)
+    {
+        return 0;
+    }
+    for (index = 0U;
+         index < (sizeof(gd32HalSTM32TimerDMAStreamMap) /
+                  sizeof(gd32HalSTM32TimerDMAStreamMap[0]));
+         ++index)
+    {
+        const GD32_HAL_STM32TimerDMAStreamMap *entry =
+            &gd32HalSTM32TimerDMAStreamMap[index];
+        if ((entry->stream == stream_instance) &&
+            (entry->channel == stm32_channel) &&
+            (entry->logical_timer == timer_resource->logical_index) &&
+            (entry->request == request))
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
 
 const GD32_HAL_Resource *GD32_HAL_ResolveDMAStream(uintptr_t stream_instance,
                                                    uint32_t stm32_channel,

@@ -301,22 +301,31 @@ HAL_StatusTypeDef HAL_ADC_Stop_IT(ADC_HandleTypeDef *hadc)
     return HAL_ADC_Stop(hadc);
 }
 
-static int ADC_DMAConfigValid(const ADC_HandleTypeDef *hadc)
+static int ADC_DMAConfigValid(const ADC_HandleTypeDef *hadc,
+                              const void *data)
 {
     const DMA_HandleTypeDef *hdma = hadc->DMA_Handle;
+    uintptr_t memory_address;
     if ((hdma == NULL) || (hdma->Instance == NULL) || (hdma->Parent != hadc))
     {
         GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_ADC_DMA_LINK_INVALID, 0U);
         return 0;
     }
+    memory_address = (uintptr_t)data;
     if ((GD32_HAL_ADC_IsDMAChannelValid(
              ADC_Address(hadc), GD32_HAL_DMA_MappedInstance(hdma),
              GD32_HAL_DMA_MappedRequest(hdma)) == 0) ||
         (hdma->Init.Direction != DMA_PERIPH_TO_MEMORY) ||
         (hdma->Init.PeriphInc != DMA_PINC_DISABLE) ||
         (hdma->Init.MemInc != DMA_MINC_ENABLE) ||
-        (hdma->Init.PeriphDataAlignment != DMA_PDATAALIGN_WORD) ||
-        (hdma->Init.MemDataAlignment != DMA_MDATAALIGN_WORD) ||
+        (((hdma->Init.PeriphDataAlignment != DMA_PDATAALIGN_HALFWORD) ||
+          (hdma->Init.MemDataAlignment != DMA_MDATAALIGN_HALFWORD)) &&
+         ((hdma->Init.PeriphDataAlignment != DMA_PDATAALIGN_WORD) ||
+          (hdma->Init.MemDataAlignment != DMA_MDATAALIGN_WORD))) ||
+        ((hdma->Init.MemDataAlignment == DMA_MDATAALIGN_HALFWORD) &&
+         ((memory_address & 1U) != 0U)) ||
+        ((hdma->Init.MemDataAlignment == DMA_MDATAALIGN_WORD) &&
+         ((memory_address & 3U) != 0U)) ||
         ((hadc->Init.DMAContinuousRequests == ENABLE) &&
          (hdma->Init.Mode != DMA_CIRCULAR)) ||
         ((hadc->Init.DMAContinuousRequests == DISABLE) &&
@@ -347,7 +356,7 @@ HAL_StatusTypeDef HAL_ADC_Start_DMA(ADC_HandleTypeDef *hadc,
     {
         return HAL_BUSY;
     }
-    if (ADC_DMAConfigValid(hadc) == 0)
+    if (ADC_DMAConfigValid(hadc, pData) == 0)
     {
         return HAL_ERROR;
     }

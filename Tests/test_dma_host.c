@@ -569,6 +569,74 @@ static void test_deinit_and_callback_guards(void)
     assert(hdma.XferCpltCallback == NULL);
 }
 
+static void test_timer_stream_deferred_resolution(void)
+{
+    DMA_HandleTypeDef pwm;
+    DMA_HandleTypeDef update;
+    DMA_HandleTypeDef capture;
+    DMA_HandleTypeDef unsupported;
+
+    mock_reset();
+    pwm = mock_handle(DMA1_Stream5, DMA_CHANNEL_3, DMA_MEMORY_TO_PERIPH);
+    pwm.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    pwm.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    assert(HAL_DMA_Init(&pwm) == HAL_OK);
+    assert(pwm.GD32_DEFERRED != 0U);
+    assert(pwm.GD32_RESOURCE == NULL);
+    assert(mock_configure_count == 0U);
+    assert(GD32_HAL_DMA_ResolveForTimer(&pwm, GD32_HAL_TIMER1_ADDRESS,
+                                        GD32_HAL_TIMER_DMA_CC1) == HAL_OK);
+    assert(pwm.GD32_DEFERRED == 0U);
+    assert(pwm.GD32_INSTANCE == GD32_HAL_DMA0_CHANNEL4_ADDRESS);
+    assert(pwm.gd32_dma_periph == GD32_HAL_DMA0_ADDRESS);
+    assert(pwm.gd32_dma_channel == 4U);
+    assert(pwm.GD32_REQUEST == GD32_DMA_REQUEST_TIMER1_CH0);
+    assert(mock_config.direction == GD32_HAL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+    assert(mock_config.periph_width == 2U);
+    assert(mock_config.memory_width == 2U);
+
+    capture = mock_handle(DMA1_Stream5, DMA_CHANNEL_3,
+                          DMA_PERIPH_TO_MEMORY);
+    capture.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    capture.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    assert(HAL_DMA_Init(&capture) == HAL_OK);
+    assert(HAL_DMA_Start(&pwm, 0x20001000U,
+                         GD32_HAL_TIMER1_ADDRESS + 0x34U, 2U) == HAL_OK);
+    assert(GD32_HAL_DMA_ResolveForTimer(&capture,
+                                        GD32_HAL_TIMER1_ADDRESS,
+                                        GD32_HAL_TIMER_DMA_CC1) == HAL_BUSY);
+    assert((capture.ErrorCode & HAL_DMA_ERROR_CHANNEL_CONFLICT) != 0U);
+    assert(HAL_DMA_Abort(&pwm) == HAL_OK);
+    assert(GD32_HAL_DMA_ResolveForTimer(&capture,
+                                        GD32_HAL_TIMER1_ADDRESS,
+                                        GD32_HAL_TIMER_DMA_CC1) == HAL_OK);
+    assert(mock_config.direction == GD32_HAL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+
+    update = mock_handle(DMA1_Stream1, DMA_CHANNEL_3,
+                         DMA_MEMORY_TO_PERIPH);
+    assert(HAL_DMA_Init(&update) == HAL_OK);
+    assert(update.GD32_DEFERRED != 0U);
+    assert(GD32_HAL_DMA_ResolveForTimer(&update, GD32_HAL_TIMER1_ADDRESS,
+                                        GD32_HAL_TIMER_DMA_UPDATE) == HAL_OK);
+    assert(update.GD32_INSTANCE == GD32_HAL_DMA0_CHANNEL1_ADDRESS);
+    assert(update.GD32_REQUEST == GD32_DMA_REQUEST_TIMER1_UP);
+
+    assert(capture.GD32_INSTANCE == GD32_HAL_DMA0_CHANNEL4_ADDRESS);
+    assert(capture.GD32_REQUEST == GD32_DMA_REQUEST_TIMER1_CH0);
+
+    unsupported = mock_handle(DMA1_Stream1, DMA_CHANNEL_3,
+                              DMA_MEMORY_TO_PERIPH);
+    assert(HAL_DMA_Init(&unsupported) == HAL_OK);
+    assert(GD32_HAL_DMA_ResolveForTimer(&unsupported,
+                                        GD32_HAL_TIMER1_ADDRESS,
+                                        GD32_HAL_TIMER_DMA_CC2) == HAL_ERROR);
+    assert(unsupported.GD32_DEFERRED != 0U);
+    assert((unsupported.ErrorCode & HAL_DMA_ERROR_REQUEST) != 0U);
+    assert(mock_last_port_error == GD32_HAL_PORT_ERROR_TIMER_DMA_UNSUPPORTED);
+    assert(HAL_DMA_DeInit(&unsupported) == HAL_OK);
+    assert(unsupported.State == HAL_DMA_STATE_RESET);
+}
+
 int main(void)
 {
     test_init_and_guards();
@@ -576,6 +644,31 @@ int main(void)
     test_interrupt_and_circular();
     test_directions_conflict_and_macros();
     test_deinit_and_callback_guards();
+    test_timer_stream_deferred_resolution();
     puts("DMA polling, interrupt and conflict host tests: PASS");
+    return 0;
+}
+int GD32_HAL_TIMER_GetDMAMapping(uint32_t timer_address,
+                                 GD32_HAL_TIMERDMARequest request,
+                                 uint32_t *channel_address,
+                                 uint32_t *request_token)
+{
+    if ((channel_address == NULL) || (request_token == NULL) ||
+        (timer_address != GD32_HAL_TIMER1_ADDRESS))
+    {
+        return 0;
+    }
+    if (request == GD32_HAL_TIMER_DMA_CC1)
+    {
+        *channel_address = GD32_HAL_DMA0_CHANNEL4_ADDRESS;
+        *request_token = GD32_DMA_REQUEST_TIMER1_CH0;
+        return 1;
+    }
+    if (request == GD32_HAL_TIMER_DMA_UPDATE)
+    {
+        *channel_address = GD32_HAL_DMA0_CHANNEL1_ADDRESS;
+        *request_token = GD32_DMA_REQUEST_TIMER1_UP;
+        return 1;
+    }
     return 0;
 }

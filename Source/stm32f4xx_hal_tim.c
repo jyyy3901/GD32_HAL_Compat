@@ -376,7 +376,7 @@ static int TIM_DMAIndex(const TIM_HandleTypeDef *htim,
 }
 
 static int TIM_DMAConfigValid(const TIM_HandleTypeDef *htim,
-                              const DMA_HandleTypeDef *hdma,
+                              DMA_HandleTypeDef *hdma,
                               uint8_t dma_id,
                               int capture)
 {
@@ -392,14 +392,27 @@ static int TIM_DMAConfigValid(const TIM_HandleTypeDef *htim,
     if ((hdma->Init.Direction != expected_direction) ||
         (hdma->Init.PeriphInc != DMA_PINC_DISABLE) ||
         (hdma->Init.MemInc != DMA_MINC_ENABLE) ||
-        (hdma->Init.PeriphDataAlignment != DMA_PDATAALIGN_WORD) ||
-        (hdma->Init.MemDataAlignment != DMA_MDATAALIGN_WORD) ||
-        ((hdma->Init.Mode != DMA_NORMAL) && (hdma->Init.Mode != DMA_CIRCULAR)) ||
-        (GD32_HAL_TIMER_IsDMAChannelValid(
+        (((hdma->Init.PeriphDataAlignment != DMA_PDATAALIGN_HALFWORD) ||
+          (hdma->Init.MemDataAlignment != DMA_MDATAALIGN_HALFWORD)) &&
+         ((hdma->Init.PeriphDataAlignment != DMA_PDATAALIGN_WORD) ||
+          (hdma->Init.MemDataAlignment != DMA_MDATAALIGN_WORD))) ||
+        ((hdma->Init.Mode != DMA_NORMAL) && (hdma->Init.Mode != DMA_CIRCULAR)))
+    {
+        GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_TIMER_DMA_CONFIG_MISMATCH,
+                           TIM_Address(htim) | dma_id);
+        return 0;
+    }
+    if (GD32_HAL_DMA_ResolveForTimer(hdma,
+                                     TIM_Address(htim),
+                                     (GD32_HAL_TIMERDMARequest)dma_id) != HAL_OK)
+    {
+        return 0;
+    }
+    if (GD32_HAL_TIMER_IsDMAChannelValid(
              TIM_Address(htim),
              (GD32_HAL_TIMERDMARequest)dma_id,
              GD32_HAL_DMA_MappedInstance(hdma),
-             GD32_HAL_DMA_MappedRequest(hdma)) == 0))
+             GD32_HAL_DMA_MappedRequest(hdma)) == 0)
     {
         GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_TIMER_DMA_CONFIG_MISMATCH,
                            TIM_Address(htim) | dma_id);
@@ -408,22 +421,54 @@ static int TIM_DMAConfigValid(const TIM_HandleTypeDef *htim,
     return 1;
 }
 
-static int TIM_DMAOutputDataValid(const uint32_t *data, uint16_t length)
+static int TIM_DMABufferAligned(const DMA_HandleTypeDef *hdma,
+                                const void *data)
 {
-    uint16_t i;
-    if ((data == NULL) || (length == 0U))
+    const uintptr_t address = (uintptr_t)data;
+
+    if (hdma->Init.MemDataAlignment == DMA_MDATAALIGN_HALFWORD)
     {
+        return (address & 1U) == 0U;
+    }
+    if (hdma->Init.MemDataAlignment == DMA_MDATAALIGN_WORD)
+    {
+        return (address & 3U) == 0U;
+    }
+    return 0;
+}
+
+static int TIM_DMAOutputDataValid(const DMA_HandleTypeDef *hdma,
+                                  const void *data,
+                                  uint16_t length)
+{
+    if ((hdma == NULL) || (data == NULL) || (length == 0U) ||
+        (TIM_DMABufferAligned(hdma, data) == 0))
+    {
+        GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_TIMER_DMA_CONFIG_MISMATCH,
+                           (uint32_t)(uintptr_t)data);
         return 0;
     }
-    for (i = 0U; i < length; ++i)
+    if (hdma->Init.MemDataAlignment == DMA_MDATAALIGN_HALFWORD)
     {
-        if (data[i] > 0xFFFFU)
-        {
-            GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_TIMER_16BIT_RANGE, data[i]);
-            return 0;
-        }
+        /* Every transferred element is intrinsically within the 16-bit limit. */
+        return 1;
     }
-    return 1;
+    if (hdma->Init.MemDataAlignment == DMA_MDATAALIGN_WORD)
+    {
+        const uint32_t *values = (const uint32_t *)data;
+        uint16_t i;
+        for (i = 0U; i < length; ++i)
+        {
+            if (values[i] > 0xFFFFU)
+            {
+                GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_TIMER_16BIT_RANGE,
+                                   values[i]);
+                return 0;
+            }
+        }
+        return 1;
+    }
+    return 0;
 }
 
 static void TIM_DMABaseCplt(DMA_HandleTypeDef *hdma)
@@ -531,10 +576,6 @@ static HAL_StatusTypeDef TIM_StartChannelDMA(TIM_HandleTypeDef *htim,
     {
         return HAL_ERROR;
     }
-    if ((capture == 0) && (TIM_DMAOutputDataValid(data, length) == 0))
-    {
-        return HAL_ERROR;
-    }
     if (htim->ChannelState[index] == HAL_TIM_CHANNEL_STATE_BUSY)
     {
         return HAL_BUSY;
@@ -547,6 +588,17 @@ static HAL_StatusTypeDef TIM_StartChannelDMA(TIM_HandleTypeDef *htim,
     dma_id = (uint8_t)(TIM_DMA_ID_CC1 + index);
     hdma = htim->hdma[dma_id];
     if (TIM_DMAConfigValid(htim, hdma, dma_id, capture) == 0)
+    {
+        return HAL_ERROR;
+    }
+    if (TIM_DMABufferAligned(hdma, data) == 0)
+    {
+        GD32_HAL_ErrorHook(GD32_HAL_PORT_ERROR_TIMER_DMA_CONFIG_MISMATCH,
+                           (uint32_t)(uintptr_t)data);
+        return HAL_ERROR;
+    }
+    if ((capture == 0) &&
+        (TIM_DMAOutputDataValid(hdma, data, length) == 0))
     {
         return HAL_ERROR;
     }
@@ -670,10 +722,13 @@ HAL_StatusTypeDef HAL_TIM_Base_Start_DMA(TIM_HandleTypeDef *htim,
     HAL_StatusTypeDef status;
     if (htim == NULL) { return HAL_ERROR; }
     if (htim->State == HAL_TIM_STATE_BUSY) { return HAL_BUSY; }
-    if ((htim->State != HAL_TIM_STATE_READY) ||
-        (TIM_DMAOutputDataValid(pData, Length) == 0)) { return HAL_ERROR; }
+    if (htim->State != HAL_TIM_STATE_READY) { return HAL_ERROR; }
     hdma = htim->hdma[TIM_DMA_ID_UPDATE];
     if (TIM_DMAConfigValid(htim, hdma, TIM_DMA_ID_UPDATE, 0) == 0)
+    {
+        return HAL_ERROR;
+    }
+    if (TIM_DMAOutputDataValid(hdma, pData, Length) == 0)
     {
         return HAL_ERROR;
     }
@@ -747,7 +802,8 @@ HAL_StatusTypeDef HAL_TIM_OC_Start_DMA(TIM_HandleTypeDef *htim,
                                        const uint32_t *pData,
                                        uint16_t Length)
 {
-    return TIM_StartChannelDMA(htim, Channel, (uint32_t *)(uintptr_t)pData, Length, 0);
+    return TIM_StartChannelDMA(htim, Channel, (uint32_t *)(uintptr_t)pData,
+                               Length, 0);
 }
 
 HAL_StatusTypeDef HAL_TIM_OC_Stop_DMA(TIM_HandleTypeDef *htim, uint32_t Channel)
@@ -760,7 +816,8 @@ HAL_StatusTypeDef HAL_TIM_PWM_Start_DMA(TIM_HandleTypeDef *htim,
                                         const uint32_t *pData,
                                         uint16_t Length)
 {
-    return TIM_StartChannelDMA(htim, Channel, (uint32_t *)(uintptr_t)pData, Length, 0);
+    return TIM_StartChannelDMA(htim, Channel, (uint32_t *)(uintptr_t)pData,
+                               Length, 0);
 }
 
 HAL_StatusTypeDef HAL_TIM_PWM_Stop_DMA(TIM_HandleTypeDef *htim, uint32_t Channel)

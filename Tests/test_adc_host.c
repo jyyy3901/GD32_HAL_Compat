@@ -467,6 +467,8 @@ static void TestDMA(void)
     ADC_HandleTypeDef hadc = MakeADC();
     DMA_HandleTypeDef hdma;
     uint32_t samples[4] = {0U};
+    uint16_t half_samples[4] = {0U};
+    uint32_t alignment_storage[3] = {0U};
 
     hadc.Init.ScanConvMode = ENABLE;
     hadc.Init.NbrOfConversion = 2U;
@@ -489,6 +491,28 @@ static void TestDMA(void)
     assert(dma_request_enabled == 0);
     assert((hadc.State & HAL_ADC_STATE_READY) != 0U);
 
+    hdma.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    hdma.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    assert(HAL_ADC_Start_DMA(&hadc,
+                             (uint32_t *)(void *)half_samples, 2U) == HAL_OK);
+    assert(dma_length == 2U);
+    hdma.State = HAL_DMA_STATE_READY;
+    hdma.XferCpltCallback(&hdma);
+
+    hdma.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+    assert(HAL_ADC_Start_DMA(&hadc, samples, 2U) == HAL_ERROR);
+    assert(gd32HalLastPortError ==
+           GD32_HAL_PORT_ERROR_ADC_DMA_CONFIG_MISMATCH);
+    hdma.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+    assert(HAL_ADC_Start_DMA(
+               &hadc,
+               (uint32_t *)(void *)((uint8_t *)alignment_storage + 1U),
+               2U) == HAL_ERROR);
+    assert(gd32HalLastPortError ==
+           GD32_HAL_PORT_ERROR_ADC_DMA_CONFIG_MISMATCH);
+    hdma.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+    hdma.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+
     assert(HAL_ADC_Start_DMA(&hadc, samples, 3U) == HAL_ERROR);
     assert(HAL_ADC_Start_DMA(&hadc, samples, 2U) == HAL_OK);
     assert(HAL_ADC_Stop_DMA(&hadc) == HAL_OK);
@@ -498,10 +522,13 @@ static void TestDMA(void)
     hadc.Init.DMAContinuousRequests = ENABLE;
     assert(HAL_ADC_Init(&hadc) == HAL_OK);
     hdma = MakeADCDMA(&hadc, DMA_CIRCULAR);
+    hdma.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    hdma.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
     hadc.DMA_Handle = &hdma;
-    assert(HAL_ADC_Start_DMA(&hadc, samples, 4U) == HAL_OK);
+    assert(HAL_ADC_Start_DMA(&hadc,
+                             (uint32_t *)(void *)half_samples, 4U) == HAL_OK);
     hdma.XferCpltCallback(&hdma);
-    assert(conv_count == 2);
+    assert(conv_count == 3);
     assert(dma_request_enabled == 1);
     assert((hadc.State & HAL_ADC_STATE_REG_BUSY) != 0U);
     hdma.XferErrorCallback(&hdma);

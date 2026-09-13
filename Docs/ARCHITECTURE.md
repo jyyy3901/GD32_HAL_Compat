@@ -1,4 +1,4 @@
-# 0.10.0 架构
+# 0.10.x 架构
 
 ## 目标
 
@@ -44,6 +44,8 @@ GD32F403RET6
 - DMA controller/channel 等目标索引。
 
 Handle 继续缓存 `GD32_INSTANCE`、`GD32_IRQ_NUMBER`、`GD32_RESOURCE`。DMA 另存转换后的 `GD32_REQUEST` 与原 token。直接寄存器只允许 `REGISTER_COMPATIBILITY_MATRIX.md` 中 A/B 项；Class C 必须使用 HAL/Port 或在编译期失败。
+
+0.10.1 对 TIMER Stream 使用 deferred resolution。`HAL_DMA_Init()` 仅验证并保存可能对应多个 TIMER event 的 STM32 Stream/Channel/Direction，不占用或猜测 GD32 Channel；`HAL_TIM_Base/OC/PWM/IC_Start_DMA()` 再结合目标 TIM Instance 与 `TIM_DMA_ID_xxx`，先验证 STM32F401 request 表，再查询 GD32F403 固定 request 表并写入 Handle 缓存。最终物理 Channel 仍由既有 owner 表独占管理。
 
 ## Strict mode
 

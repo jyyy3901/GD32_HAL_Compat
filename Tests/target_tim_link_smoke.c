@@ -1,14 +1,5 @@
 #include "stm32f4xx_hal.h"
 
-__IO GD32_HAL_PortError gd32HalLastPortError;
-__IO uint32_t gd32HalLastPortErrorDetail;
-
-void GD32_HAL_ErrorHook(GD32_HAL_PortError error, uint32_t detail)
-{
-    gd32HalLastPortError = error;
-    gd32HalLastPortErrorDetail = detail;
-}
-
 void TargetSmoke(void)
 {
     static TIM_HandleTypeDef htim;
@@ -16,6 +7,8 @@ void TargetSmoke(void)
     static TIM_IC_InitTypeDef input;
     static TIM_MasterConfigTypeDef master;
     static TIM_SlaveConfigTypeDef slave;
+    static DMA_HandleTypeDef dma;
+    static uint16_t pulses[2] = {100U, 200U};
 
     htim.Instance = TIM2;
     htim.Init.Prescaler = 79U;
@@ -30,6 +23,25 @@ void TargetSmoke(void)
     output.OCPolarity = TIM_OCPOLARITY_HIGH;
     output.OCFastMode = TIM_OCFAST_DISABLE;
     (void)HAL_TIM_PWM_ConfigChannel(&htim, &output, TIM_CHANNEL_1);
+
+    dma.Instance = DMA1_Stream5;
+    dma.Init.Channel = DMA_CHANNEL_3;
+    dma.Init.Direction = DMA_MEMORY_TO_PERIPH;
+    dma.Init.PeriphInc = DMA_PINC_DISABLE;
+    dma.Init.MemInc = DMA_MINC_ENABLE;
+    dma.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    dma.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    dma.Init.Mode = DMA_NORMAL;
+    dma.Init.Priority = DMA_PRIORITY_HIGH;
+    dma.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    dma.Init.MemBurst = DMA_MBURST_SINGLE;
+    dma.Init.PeriphBurst = DMA_PBURST_SINGLE;
+    (void)HAL_DMA_Init(&dma);
+    __HAL_LINKDMA(&htim, hdma[TIM_DMA_ID_CC1], dma);
+    (void)HAL_TIM_PWM_Start_DMA(
+        &htim, TIM_CHANNEL_1,
+        (const uint32_t *)(const void *)pulses, 2U);
+    (void)HAL_TIM_PWM_Stop_DMA(&htim, TIM_CHANNEL_1);
 
     input.ICPolarity = TIM_ICPOLARITY_RISING;
     input.ICSelection = TIM_ICSELECTION_DIRECTTI;

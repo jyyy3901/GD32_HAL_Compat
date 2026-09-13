@@ -80,6 +80,23 @@ int main(void)
         assert(resource->gd32_instance == GD32_HAL_DMA0_CHANNEL3_ADDRESS);
         assert(request == GD32_DMA_REQUEST_USART0_TX);
     }
+    assert(GD32_HAL_ResolveDMAChannelAddress(
+               GD32_HAL_DMA0_CHANNEL4_ADDRESS)->gd32_channel == 4U);
+    assert(GD32_HAL_DMAStreamHasTimerCandidate(
+               STM32_DMA1_STREAM5, DMA_CHANNEL_3,
+               DMA_MEMORY_TO_PERIPH) != 0);
+    assert(GD32_HAL_DMAStreamMatchesTimer(
+               STM32_DMA1_STREAM5, DMA_CHANNEL_3,
+               DMA_MEMORY_TO_PERIPH, GD32_HAL_TIMER1_ADDRESS,
+               GD32_HAL_TIMER_DMA_CC1) != 0);
+    assert(GD32_HAL_DMAStreamMatchesTimer(
+               STM32_DMA1_STREAM5, DMA_CHANNEL_3,
+               DMA_MEMORY_TO_PERIPH, GD32_HAL_TIMER1_ADDRESS,
+               GD32_HAL_TIMER_DMA_CC2) == 0);
+    assert(GD32_HAL_DMAStreamMatchesTimer(
+               STM32_DMA2_STREAM6, DMA_CHANNEL_0,
+               DMA_PERIPH_TO_MEMORY, GD32_HAL_TIMER0_ADDRESS,
+               GD32_HAL_TIMER_DMA_CC3) != 0);
 
     assert(GD32_HAL_SPI0_ADDRESS == 0x40013000UL);
     assert(GD32_HAL_SPI0_ADDRESS != GD32_HAL_USART0_ADDRESS);

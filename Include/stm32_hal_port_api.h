@@ -514,10 +514,21 @@ int GD32_HAL_PortDeInit(void);
 uint32_t GD32_HAL_ReadUIDWord(uint8_t index);
 const GD32_HAL_Resource *GD32_HAL_ResolveInstance(uintptr_t stm32_instance,
                                                   GD32_HAL_ResourceKind kind);
+const GD32_HAL_Resource *GD32_HAL_ResolveDMAChannelAddress(
+    uint32_t channel_address);
 const GD32_HAL_Resource *GD32_HAL_ResolveDMAStream(uintptr_t stream_instance,
                                                    uint32_t stm32_channel,
                                                    uint32_t stm32_direction,
                                                    uint32_t *gd32_request);
+int GD32_HAL_DMAStreamHasTimerCandidate(uintptr_t stream_instance,
+                                        uint32_t stm32_channel,
+                                        uint32_t stm32_direction);
+int GD32_HAL_DMAStreamMatchesTimer(
+    uintptr_t stream_instance,
+    uint32_t stm32_channel,
+    uint32_t stm32_direction,
+    uint32_t timer_address,
+    GD32_HAL_TIMERDMARequest request);
 
 int GD32_HAL_GPIO_IsInstance(uint32_t gpio_address);
 int GD32_HAL_GPIO_ArePinsAvailable(uint32_t gpio_address, uint32_t pins);
@@ -638,6 +649,10 @@ int GD32_HAL_TIMER_IsDMAChannelValid(uint32_t timer_address,
                                      GD32_HAL_TIMERDMARequest request,
                                      uint32_t channel_address,
                                      uint32_t request_token);
+int GD32_HAL_TIMER_GetDMAMapping(uint32_t timer_address,
+                                 GD32_HAL_TIMERDMARequest request,
+                                 uint32_t *channel_address,
+                                 uint32_t *request_token);
 uint32_t GD32_HAL_TIMER_GetDMADataAddress(uint32_t timer_address,
                                           GD32_HAL_TIMERDMARequest request);
 void GD32_HAL_TIMER_SetCounter(uint32_t timer_address, uint32_t value);

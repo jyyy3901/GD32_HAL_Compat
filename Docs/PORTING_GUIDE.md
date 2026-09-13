@@ -113,15 +113,15 @@ TIMER IRQ 也使用 GD32 startup 名称。例如兼容层 `TIM2` 对应 `TIMER1_
 
 ## 9. DMA Instance 与请求迁移
 
-STM32 的 `DMA1/2_Streamx + Init.Channel` 不是 GD32 的可选请求路由。0.10.0 对 USART1/2/6、ADC1、SPI1/2/3、I2C1/2 的已确认唯一组合允许保留 CubeMX 初始化语法；`HAL_DMA_Init()` 会转换到目标固定 Channel/request。未覆盖的组合按以下步骤显式迁移：
+STM32 的 `DMA1/2_Streamx + Init.Channel` 不是 GD32 的可选请求路由。USART1/2/6、ADC1、SPI1/2/3、I2C1/2 的已确认唯一组合在 `HAL_DMA_Init()` 时转换。0.10.1 对 TIM1..5 的 RM0368 request 先 deferred，再由 `HAL_TIM_Base/OC/PWM/IC_Start_DMA()` 结合 TIM Instance 和 UPDATE/CCx event 转换到目标固定 Channel/request。未覆盖的组合按以下步骤显式迁移：
 
 1. 从 User Manual 表 10-3/10-4 找到目标外设请求固定 Channel。
 2. 把 `Instance` 改为 `GD32_DMA0_CHANNELx` 或 `GD32_DMA1_CHANNELx`。
 3. 把 `Init.Channel` 改为对应 `GD32_DMA_REQUEST_*`。
 4. FIFO、burst、PFCTRL、double-buffer 配置必须移除或重构。
-5. UART、ADC、SPI 使用 `__HAL_LINKDMA()` 绑定；TIMER 使用 `htim.hdma[TIM_DMA_ID_*]` 与 `Parent` 绑定。UART/TIMER/ADC/SPI 均管理自身 DMA 请求使能位；I2C DMA 当前明确不支持。
+5. UART、ADC、SPI 和 TIMER 都可使用 `__HAL_LINKDMA()` 绑定；TIMER 的字段为 `hdma[TIM_DMA_ID_UPDATE/CCx]`。UART/TIMER/ADC/SPI 均管理自身 DMA 请求使能位；I2C DMA 当前明确不支持。
 
-ADC1 固定映射 GD ADC0，DMA 固定为 `GD32_DMA0_CHANNEL0 + GD32_DMA_REQUEST_ADC0`，方向 P2M，PINC disable，MINC enable，外设/内存均 word。`DMAContinuousRequests=ENABLE` 必须搭配 circular；DISABLE 必须搭配 normal。`HAL_ADC_Init()` 后尚未校准，首次 Start/Start_IT/Start_DMA 会经过同一个 enable、稳定等待与 calibration gate。校准状态独立于 ADCON；即使应用先直接写 `ADC1->CR2 |= ADC_CR2_ADON`，随后 HAL Start 仍会校准。HAL Stop/DeInit、ADC clock disable、peripheral reset 和 RCU reset 都使状态失效。direct `ADON+SWSTART` 绕过此 gate，在 strict mode 不提供 `ADC_CR2_SWSTART`。
+ADC1 固定映射 GD ADC0，DMA 固定为 `GD32_DMA0_CHANNEL0 + GD32_DMA_REQUEST_ADC0`，方向 P2M，PINC disable，支持成对的 HALFWORD/HALFWORD 或 WORD/WORD。`DMAContinuousRequests=ENABLE` 必须搭配 circular；DISABLE 必须搭配 normal。`HAL_ADC_Init()` 后尚未校准，首次 Start/Start_IT/Start_DMA 会经过同一个 enable、稳定等待与 calibration gate。校准状态独立于 ADCON；HAL 进入时发现 ADC disabled 会先失效旧状态。HAL Stop/DeInit、ADC clock disable、peripheral reset 和 RCU reset 都使状态失效。direct `ADON+SWSTART` 绕过此 gate，在 strict mode 不提供 `ADC_CR2_SWSTART`；在兼容层未观察到 disabled 的情况下直接完成 ADON off/on 也无法透明追踪其掉电历史。
 
 I2C1/I2C2 映射 GD I2C0/I2C1。7 位 `DevAddress` 保持 STM HAL 左移一位约定；Mem/IsDeviceReady 仅支持 7 位。中断文件分别在 `I2C0_EV_IRQHandler`/`I2C0_ER_IRQHandler` 中调用 `HAL_I2C_EV_IRQHandler(&hi2c1)`/`HAL_I2C_ER_IRQHandler(&hi2c1)`，I2C1 对应同理。软件复位恢复不包含 GPIO SCL 脉冲；外部器件拉低 SDA/SCL 的产品必须实现独立板级恢复流程。
 

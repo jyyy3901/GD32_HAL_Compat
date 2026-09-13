@@ -1,6 +1,13 @@
-# GD32 HAL Compatibility Layer 0.10.0
+# GD32 HAL Compatibility Layer 0.10.1
 
 面向 `STM32F401VEH6 HAL 应用 -> GD32F403RET6 SPL` 的源码兼容层。0.10.0 在 0.9.0 状态机与 Port 分层上增加受严格矩阵约束的 CMSIS/Register compatibility；不复制 STM32 HAL/CMSIS，不修改官方 GD32 文件，也不为不存在的能力返回假成功。
+
+## 0.10.1 修复范围
+
+- ADC 只在同一连续上电周期复用 calibration-valid；检测到 `ADCON=0` 后先失效状态，再使能、稳定、reset calibration 和 calibration；
+- ADC DMA 支持严格匹配的 `HALFWORD/HALFWORD` 与 `WORD/WORD`，校验 buffer 对齐且 `Length` 始终表示 transfer item 数；
+- STM32 CubeMX TIM DMA Stream 初始化增加事件感知的延迟解析：`HAL_DMA_Init()` 保留 Stream/Channel/Direction 语义，`HAL_TIM_*_Start_DMA()` 结合 TIM Instance 和 `TIM_DMA_ID_xxx` 后才绑定 GD32 固定 Channel/request；
+- TIM DMA 的 HALFWORD buffer 按 `uint16_t` element 解释，WORD buffer 按 `uint32_t` element 做 16 位目标范围检查；normal/circular ownership 与回调状态保持既有语义。
 
 ## 架构
 

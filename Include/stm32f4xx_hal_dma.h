@@ -175,6 +175,7 @@ struct __DMA_HandleTypeDef
     uintptr_t GD32_RESOLVED_FROM;
     int32_t GD32_IRQ_NUMBER;
     const GD32_HAL_Resource *GD32_RESOURCE;
+    uint8_t GD32_DEFERRED;
 };
 
 /*
@@ -354,6 +355,12 @@ HAL_StatusTypeDef HAL_DMA_UnRegisterCallback(DMA_HandleTypeDef *hdma,
                                              HAL_DMA_CallbackIDTypeDef CallbackID);
 HAL_DMA_StateTypeDef HAL_DMA_GetState(const DMA_HandleTypeDef *hdma);
 uint32_t HAL_DMA_GetError(const DMA_HandleTypeDef *hdma);
+
+/* Compatibility-private: finalizes an ambiguous CubeMX TIM Stream mapping. */
+HAL_StatusTypeDef GD32_HAL_DMA_ResolveForTimer(
+    DMA_HandleTypeDef *hdma,
+    uint32_t timer_address,
+    GD32_HAL_TIMERDMARequest request);
 
 #ifdef __cplusplus
 }
