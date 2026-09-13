@@ -147,6 +147,16 @@ typedef enum
     HAL_DMA_XFER_ALL_CB_ID = 0x06U
 } HAL_DMA_CallbackIDTypeDef;
 
+typedef enum
+{
+    GD32_HAL_DMA_MAPPING_UNINITIALIZED = 0x00U,
+    GD32_HAL_DMA_MAPPING_NATIVE = 0x01U,
+    GD32_HAL_DMA_MAPPING_STM32_UNIQUE = 0x02U,
+    GD32_HAL_DMA_MAPPING_STM32_TIMER = 0x03U
+} GD32_HAL_DMAMappingOrigin;
+
+#define GD32_HAL_DMA_ACTIVE_TIM_NONE 0xFFU
+
 #ifndef GD32_HAL_DMA_HANDLE_TYPEDEF
 #define GD32_HAL_DMA_HANDLE_TYPEDEF
 typedef struct __DMA_HandleTypeDef DMA_HandleTypeDef;
@@ -176,6 +186,8 @@ struct __DMA_HandleTypeDef
     int32_t GD32_IRQ_NUMBER;
     const GD32_HAL_Resource *GD32_RESOURCE;
     uint8_t GD32_DEFERRED;
+    GD32_HAL_DMAMappingOrigin GD32_MAPPING_ORIGIN;
+    uint8_t GD32_ACTIVE_TIM_DMA_ID;
 };
 
 /*

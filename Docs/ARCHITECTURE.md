@@ -47,6 +47,8 @@ Handle 继续缓存 `GD32_INSTANCE`、`GD32_IRQ_NUMBER`、`GD32_RESOURCE`。DMA 
 
 0.10.1 对 TIMER Stream 使用 deferred resolution。`HAL_DMA_Init()` 仅验证并保存可能对应多个 TIMER event 的 STM32 Stream/Channel/Direction，不占用或猜测 GD32 Channel；`HAL_TIM_Base/OC/PWM/IC_Start_DMA()` 再结合目标 TIM Instance 与 `TIM_DMA_ID_xxx`，先验证 STM32F401 request 表，再查询 GD32F403 固定 request 表并写入 Handle 缓存。最终物理 Channel 仍由既有 owner 表独占管理。
 
+0.10.2 为 DMA Handle 增加显式 mapping origin 和 active TIM DMA ID。TIMER semantic Handle 即使已经解析过，后续每次 Start 仍验证当前 event，并且只在 READY 时重绑定；callback 使用 active ID，不扫描 shared Handle 的第一个链接位置。
+
 ## Strict mode
 
 `GD32_HAL_STRICT_STM32_COMPAT` 默认 `1`。`GD32_HAL_ENABLE_UNSAFE_REGISTER_COMPAT` 默认 `0`；只有后者显式启用才暴露实验性的 ADC direct-start bit。GPIO MODER/AFR、DMA Stream registers、RCC/I2C/FLASH overlay 等结构性不等价项不因追求编译率而伪造。

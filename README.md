@@ -1,6 +1,13 @@
-# GD32 HAL Compatibility Layer 0.10.1
+# GD32 HAL Compatibility Layer 0.10.2
 
 面向 `STM32F401VEH6 HAL 应用 -> GD32F403RET6 SPL` 的源码兼容层。0.10.0 在 0.9.0 状态机与 Port 分层上增加受严格矩阵约束的 CMSIS/Register compatibility；不复制 STM32 HAL/CMSIS，不修改官方 GD32 文件，也不为不存在的能力返回假成功。
+
+## 0.10.2 修复范围
+
+- DMA Handle 明确记录 native、STM32 unique、STM32 TIMER semantic mapping origin；
+- STM32 TIMER Stream Handle 在每次 TIM DMA Start 时重新验证 event，并可在 READY 状态下安全重映射到不同 GD32 physical Channel/request；
+- Handle 记录 active TIM DMA ID，completion/half/error callback 不再通过第一个相同 Handle 指针猜测 event；
+- 新增 shared TIM1 `DMA2_Stream6 + DMA_CHANNEL_0` 的 CC1/CC2/CC3、BUSY、ownership conflict、unsupported 和 native-path 回归测试；新增独立 IAR 9.30 compile-check 脚本。
 
 ## 0.10.1 修复范围
 

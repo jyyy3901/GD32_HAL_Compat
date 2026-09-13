@@ -113,7 +113,7 @@ TIMER IRQ 也使用 GD32 startup 名称。例如兼容层 `TIM2` 对应 `TIMER1_
 
 ## 9. DMA Instance 与请求迁移
 
-STM32 的 `DMA1/2_Streamx + Init.Channel` 不是 GD32 的可选请求路由。USART1/2/6、ADC1、SPI1/2/3、I2C1/2 的已确认唯一组合在 `HAL_DMA_Init()` 时转换。0.10.1 对 TIM1..5 的 RM0368 request 先 deferred，再由 `HAL_TIM_Base/OC/PWM/IC_Start_DMA()` 结合 TIM Instance 和 UPDATE/CCx event 转换到目标固定 Channel/request。未覆盖的组合按以下步骤显式迁移：
+STM32 的 `DMA1/2_Streamx + Init.Channel` 不是 GD32 的可选请求路由。USART1/2/6、ADC1、SPI1/2/3、I2C1/2 的已确认唯一组合在 `HAL_DMA_Init()` 时转换。0.10.2 对 TIM1..5 的 RM0368 request 保存 TIMER semantic origin，并在每次 `HAL_TIM_Base/OC/PWM/IC_Start_DMA()` 时结合 TIM Instance 和 UPDATE/CCx event 验证或重映射到目标固定 Channel/request。未覆盖的组合按以下步骤显式迁移：
 
 1. 从 User Manual 表 10-3/10-4 找到目标外设请求固定 Channel。
 2. 把 `Instance` 改为 `GD32_DMA0_CHANNELx` 或 `GD32_DMA1_CHANNELx`。

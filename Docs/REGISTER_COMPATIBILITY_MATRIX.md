@@ -1,6 +1,6 @@
 # STM32F401 Register Compatibility Matrix
 
-本矩阵是 0.10.1 严格模式的公开契约。`A` 表示可安全直接 overlay；`B` 表示寄存器可访问，但必须使用本项目提供的 STM32 名称 bit mask 转换；`C` 表示不提供、编译失败或只能走 HAL/Port 明确错误路径。裸 STM32 绝对地址和 magic mask 永远不在兼容范围。
+本矩阵是 0.10.2 严格模式的公开契约。`A` 表示可安全直接 overlay；`B` 表示寄存器可访问，但必须使用本项目提供的 STM32 名称 bit mask 转换；`C` 表示不提供、编译失败或只能走 HAL/Port 明确错误路径。裸 STM32 绝对地址和 magic mask 永远不在兼容范围。
 
 ## Coverage summary
 
@@ -15,7 +15,7 @@
 | ADC direct `ADON` then HAL Start | conditional: HAL calibrates when invalid/disabled was observed |
 | ADC direct `ADON+SWSTART` | Class C in strict mode |
 | `DMA2_Stream0` in `HAL_DMA_Init()` | init-token compatible for listed mappings |
-| TIM CubeMX Stream + Channel | deferred init-token compatible; final event mapping at TIM Start DMA |
+| TIM CubeMX Stream + Channel | event-aware init-token compatible; shared Handle is revalidated/remapped at every TIM Start DMA |
 | `DMA2_Stream0->CR` | Class C; incomplete type compile failure |
 | TIM2/TIM5 32-bit range | Class C; HAL rejects `>0xFFFF`, direct access unsafe |
 | `RCC->...`, I2C direct registers, FLASH/FMC direct registers | Class C |

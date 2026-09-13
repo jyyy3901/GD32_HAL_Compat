@@ -2,7 +2,7 @@
 
 ## 硬件模型
 
-| 项目 | STM32F401 | GD32F403 | 0.10.1 策略 |
+| 项目 | STM32F401 | GD32F403 | 0.10.2 策略 |
 |---|---|---|---|
 | 组织 | DMA1/2，各 8 Stream | DMA0 7 Channel、DMA1 5 Channel | 内部只使用 controller/channel |
 | 请求选择 | Stream + Channel selector | 外设请求固定接到物理 Channel | 使用 `GD32_DMA_REQUEST_*` 令牌校验 |
@@ -38,6 +38,8 @@ hdma.Init.Direction = DMA_MEMORY_TO_PERIPH;
 `HAL_DMA_Init()` 根据 Stream、Channel selector、方向以及后续绑定的外设能力，将它转换为 GD32 的物理 controller/channel/request。USART1/2/6、ADC1、SPI1/2/3 和 I2C1/2 的唯一映射立即解析。
 
 TIMER request 不能只靠 Stream/Channel/Direction 唯一判定。0.10.1 对 RM0368 已确认的 TIM1..5 request 保存 deferred 状态；`HAL_TIM_Base/OC/PWM/IC_Start_DMA()` 使用 TIM Instance 与 `TIM_DMA_ID_UPDATE/CCx` 完成最终映射。STM32 request 与目标 GD32 event 任一不匹配即 `HAL_ERROR + ErrorHook`，不会把 Stream 数当作 GD32 Channel。显式目标 token 路径仍继续支持。
+
+0.10.2 进一步保存 mapping origin。来自 STM32 TIMER Stream 的 Handle 每次 Start 都重新验证 event；若 READY 且目标 physical Channel 可用，可以从先前 CC/UPDATE mapping 重绑定到当前 event。BUSY、目标 Channel 冲突或 source request 不允许时不会修改当前缓存。active TIM DMA ID 独立保存，shared Handle callback 不再以 `htim->hdma[]` 第一个同指针项推断 event。
 
 ADC 与 TIMER DMA 仅接受成对的 `HALFWORD/HALFWORD` 或 `WORD/WORD`。HALFWORD buffer 按 16 位 item 递增，WORD buffer 按 32 位 item 递增；`Length` 对两种模式都表示 item 数。目标 TIMER CAR/CHxCV 支持 16/32 位访问但有效字段只有 16 位，因此 WORD 输出中的任何 `> 0xFFFF` 值都会在启动前失败。
 

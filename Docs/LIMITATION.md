@@ -1,4 +1,4 @@
-# 0.10.1 限制与兼容等级
+# 0.10.2 限制与兼容等级
 
 ## API 状态
 
@@ -36,4 +36,4 @@ STM32F401VEH6 与 GD32F403RET6 不是引脚兼容替换。源器件存在而目�
 
 ## 板级待验证
 
-必须验证时钟、NVIC 优先级、共享 IRQ、UART 波特率/错误注入、DMA 请求冲突与 normal/circular 状态、TIMER PWM/捕获/级联/TRGO、ADC 输入范围/采样时间/触发/DMA/校准，以及所有目标引脚和 AFIO remap。0.10.1 的代码检查结果不等于硬件或量产签核。
+必须验证时钟、NVIC 优先级、共享 IRQ、UART 波特率/错误注入、DMA 请求冲突与 normal/circular 状态、TIMER PWM/捕获/级联/TRGO、ADC 输入范围/采样时间/触发/DMA/校准，以及所有目标引脚和 AFIO remap。0.10.2 的代码检查结果不等于硬件或量产签核。

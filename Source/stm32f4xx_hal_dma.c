@@ -176,6 +176,7 @@ HAL_StatusTypeDef HAL_DMA_Init(DMA_HandleTypeDef *hdma)
 {
     GD32_HAL_DMAConfig config;
     const GD32_HAL_Resource *resource;
+    GD32_HAL_DMAMappingOrigin mapping_origin;
     uint32_t address;
     uint32_t gd32_request;
 
@@ -187,12 +188,18 @@ HAL_StatusTypeDef HAL_DMA_Init(DMA_HandleTypeDef *hdma)
     gd32_request = hdma->Init.Channel;
     resource = GD32_HAL_ResolveInstance((uintptr_t)hdma->Instance,
                                         GD32_HAL_RESOURCE_DMA);
+    mapping_origin = (resource != NULL) ? GD32_HAL_DMA_MAPPING_NATIVE :
+                                         GD32_HAL_DMA_MAPPING_UNINITIALIZED;
     if (resource == NULL)
     {
         resource = GD32_HAL_ResolveDMAStream((uintptr_t)hdma->Instance,
                                              hdma->Init.Channel,
                                              hdma->Init.Direction,
                                              &gd32_request);
+        if (resource != NULL)
+        {
+            mapping_origin = GD32_HAL_DMA_MAPPING_STM32_UNIQUE;
+        }
     }
     if ((resource == NULL) &&
         (GD32_HAL_DMAStreamHasTimerCandidate((uintptr_t)hdma->Instance,
@@ -232,6 +239,8 @@ HAL_StatusTypeDef HAL_DMA_Init(DMA_HandleTypeDef *hdma)
         hdma->StreamBaseAddress = 0U;
         hdma->StreamIndex = 0U;
         hdma->GD32_DEFERRED = 1U;
+        hdma->GD32_MAPPING_ORIGIN = GD32_HAL_DMA_MAPPING_STM32_TIMER;
+        hdma->GD32_ACTIVE_TIM_DMA_ID = GD32_HAL_DMA_ACTIVE_TIM_NONE;
         hdma->ErrorCode = HAL_DMA_ERROR_NONE;
         hdma->State = HAL_DMA_STATE_READY;
         __HAL_UNLOCK(hdma);
@@ -253,6 +262,8 @@ HAL_StatusTypeDef HAL_DMA_Init(DMA_HandleTypeDef *hdma)
     hdma->GD32_RESOLVED_FROM = (uintptr_t)hdma->Instance;
     hdma->GD32_IRQ_NUMBER = resource->gd32_irq;
     hdma->GD32_DEFERRED = 0U;
+    hdma->GD32_MAPPING_ORIGIN = mapping_origin;
+    hdma->GD32_ACTIVE_TIM_DMA_ID = GD32_HAL_DMA_ACTIVE_TIM_NONE;
     address = resource->gd32_instance;
     if ((hdma->State == HAL_DMA_STATE_BUSY) ||
         (hdma->State == HAL_DMA_STATE_ABORT) ||
@@ -339,6 +350,8 @@ HAL_StatusTypeDef HAL_DMA_DeInit(DMA_HandleTypeDef *hdma)
         hdma->State = HAL_DMA_STATE_RESET;
         hdma->GD32_RESOLVED_FROM = 0U;
         hdma->GD32_DEFERRED = 0U;
+        hdma->GD32_MAPPING_ORIGIN = GD32_HAL_DMA_MAPPING_UNINITIALIZED;
+        hdma->GD32_ACTIVE_TIM_DMA_ID = GD32_HAL_DMA_ACTIVE_TIM_NONE;
         __HAL_UNLOCK(hdma);
         return HAL_OK;
     }
@@ -378,6 +391,8 @@ HAL_StatusTypeDef HAL_DMA_DeInit(DMA_HandleTypeDef *hdma)
     hdma->GD32_REQUEST = GD32_HAL_DMA_REQUEST_MEMORY;
     hdma->GD32_RESOLVED_FROM = 0U;
     hdma->GD32_DEFERRED = 0U;
+    hdma->GD32_MAPPING_ORIGIN = GD32_HAL_DMA_MAPPING_UNINITIALIZED;
+    hdma->GD32_ACTIVE_TIM_DMA_ID = GD32_HAL_DMA_ACTIVE_TIM_NONE;
     __HAL_UNLOCK(hdma);
     GD32_HAL_DMA_Release(address, hdma);
     return HAL_OK;
@@ -493,12 +508,13 @@ HAL_StatusTypeDef GD32_HAL_DMA_ResolveForTimer(
     uint32_t gd32_request = GD32_HAL_DMA_REQUEST_MEMORY;
     uint32_t channel_address = 0U;
     uint32_t address;
+    uint32_t old_address = 0U;
 
     if ((hdma == NULL) || (hdma->Instance == NULL))
     {
         return HAL_ERROR;
     }
-    if (hdma->GD32_DEFERRED == 0U)
+    if (hdma->GD32_MAPPING_ORIGIN != GD32_HAL_DMA_MAPPING_STM32_TIMER)
     {
         return HAL_OK;
     }
@@ -538,6 +554,15 @@ HAL_StatusTypeDef GD32_HAL_DMA_ResolveForTimer(
                            gd32_request);
         return HAL_ERROR;
     }
+    if ((hdma->GD32_RESOURCE == resource) &&
+        (hdma->GD32_INSTANCE == address) &&
+        (hdma->GD32_REQUEST == gd32_request) &&
+        (hdma->GD32_RESOLVED_FROM == (uintptr_t)hdma->Instance))
+    {
+        hdma->GD32_DEFERRED = 0U;
+        hdma->ErrorCode = HAL_DMA_ERROR_NONE;
+        return HAL_OK;
+    }
     if (GD32_HAL_DMA_Claim(address, hdma) == 0)
     {
         hdma->ErrorCode = HAL_DMA_ERROR_CHANNEL_CONFLICT;
@@ -560,6 +585,10 @@ HAL_StatusTypeDef GD32_HAL_DMA_ResolveForTimer(
         return HAL_ERROR;
     }
     GD32_HAL_DMA_ClearFlag(address, DMA_SUPPORTED_FLAGS);
+    if (hdma->GD32_RESOURCE != NULL)
+    {
+        old_address = hdma->GD32_INSTANCE;
+    }
     hdma->GD32_RESOURCE = resource;
     hdma->GD32_INSTANCE = address;
     hdma->gd32_dma_periph = resource->gd32_periph;
@@ -572,6 +601,10 @@ HAL_StatusTypeDef GD32_HAL_DMA_ResolveForTimer(
     hdma->GD32_DEFERRED = 0U;
     hdma->ErrorCode = HAL_DMA_ERROR_NONE;
     GD32_HAL_DMA_Release(address, hdma);
+    if ((old_address != 0U) && (old_address != address))
+    {
+        GD32_HAL_DMA_Release(old_address, hdma);
+    }
     return HAL_OK;
 }
 
