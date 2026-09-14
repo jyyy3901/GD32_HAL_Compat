@@ -1,7 +1,32 @@
+param(
+    [string]$VendorRoot
+)
+
 $ErrorActionPreference = 'Stop'
 
 $project = Split-Path -Parent $PSScriptRoot
 $workspace = Split-Path -Parent $project
+if ([string]::IsNullOrWhiteSpace($VendorRoot)) {
+    $VendorRoot = Join-Path $workspace 'GD32F403RET6'
+}
+if (-not (Test-Path -LiteralPath $VendorRoot -PathType Container)) {
+    throw "GD32F403 vendor root not found: $VendorRoot"
+}
+$VendorRoot = (Resolve-Path -LiteralPath $VendorRoot).Path
+$vendorCmsis = Join-Path $VendorRoot 'CMSIS'
+$vendorDeviceInclude = Join-Path $vendorCmsis 'GD\GD32F403\Include'
+$vendorSpl = Join-Path $VendorRoot 'GD32F403_standard_peripheral'
+$vendorSplInclude = Join-Path $vendorSpl 'Include'
+$vendorSplSource = Join-Path $vendorSpl 'Source'
+
+foreach ($requiredVendorPath in @($vendorCmsis, $vendorDeviceInclude,
+                                  $vendorSplInclude, $vendorSplSource)) {
+    if (-not (Test-Path -LiteralPath $requiredVendorPath)) {
+        throw "Required GD32F403 vendor path not found: $requiredVendorPath"
+    }
+}
+Write-Output "GD32F403 vendor root: $VendorRoot"
+
 $clang = 'D:\mingw64\bin\clang.exe'
 $clangTidy = 'D:\mingw64\bin\clang-tidy.exe'
 $llvmNm = 'D:\mingw64\bin\llvm-nm.exe'
@@ -17,10 +42,10 @@ $armIncludes = @(
     '-I', (Join-Path $PSScriptRoot 'ArmShims'),
     '-I', (Join-Path $project 'Include'),
     '-I', (Join-Path $project 'Port'),
-    '-I', (Join-Path $workspace 'GD32F403RET6'),
-    '-I', (Join-Path $workspace 'GD32F403RET6\CMSIS'),
-    '-I', (Join-Path $workspace 'GD32F403RET6\CMSIS\GD\GD32F403\Include'),
-    '-I', (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Include')
+    '-I', $VendorRoot,
+    '-I', $vendorCmsis,
+    '-I', $vendorDeviceInclude,
+    '-I', $vendorSplInclude
 )
 
 $compatSources = @(
@@ -204,9 +229,9 @@ $timLinkSources = @(
     (Join-Path $project 'Port\stm32_timer_trigger_map.c'),
     (Join-Path $project 'Port\gd32_instance_map.c'),
     (Join-Path $PSScriptRoot 'target_tim_link_smoke.c'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_timer.c'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_dma.c'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_rcu.c')
+    (Join-Path $vendorSplSource 'gd32f403_timer.c'),
+    (Join-Path $vendorSplSource 'gd32f403_dma.c'),
+    (Join-Path $vendorSplSource 'gd32f403_rcu.c')
 )
 $timLinkObjects = @()
 for ($index = 0; $index -lt $timLinkSources.Count; ++$index) {
@@ -254,10 +279,10 @@ $adcLinkSources = @(
     (Join-Path $project 'Port\gd32_instance_map.c'),
     (Join-Path $project 'Port\gd32_rcc_port.c'),
     (Join-Path $PSScriptRoot 'target_adc_link_smoke.c'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_adc.c'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_dma.c'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_gpio.c'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_rcu.c')
+    (Join-Path $vendorSplSource 'gd32f403_adc.c'),
+    (Join-Path $vendorSplSource 'gd32f403_dma.c'),
+    (Join-Path $vendorSplSource 'gd32f403_gpio.c'),
+    (Join-Path $vendorSplSource 'gd32f403_rcu.c')
 )
 $adcLinkObjects = @()
 for ($index = 0; $index -lt $adcLinkSources.Count; ++$index) {
@@ -309,10 +334,10 @@ $phase7LinkSources = @(
     (Join-Path $project 'Port\gd32_i2c_port.c'),
     (Join-Path $project 'Port\gd32_spi_port.c'),
     (Join-Path $PSScriptRoot 'target_i2c_spi_link_smoke.c'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_i2c.c'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_spi.c'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_dma.c'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_rcu.c')
+    (Join-Path $vendorSplSource 'gd32f403_i2c.c'),
+    (Join-Path $vendorSplSource 'gd32f403_spi.c'),
+    (Join-Path $vendorSplSource 'gd32f403_dma.c'),
+    (Join-Path $vendorSplSource 'gd32f403_rcu.c')
 )
 $phase7LinkObjects = @()
 for ($index = 0; $index -lt $phase7LinkSources.Count; ++$index) {
@@ -366,12 +391,12 @@ $phase8LinkSources = @(
     (Join-Path $project 'Port\gd32_flash_port.c'),
     (Join-Path $project 'Port\gd32_tick_port.c'),
     (Join-Path $PSScriptRoot 'target_rcc_exti_flash_link_smoke.c'),
-    (Join-Path $workspace 'GD32F403RET6\CMSIS\GD\GD32F403\Source\system_gd32f403.c'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_rcu.c'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_fmc.c'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_exti.c'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_gpio.c'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Source\gd32f403_dma.c')
+    (Join-Path $vendorCmsis 'GD\GD32F403\Source\system_gd32f403.c'),
+    (Join-Path $vendorSplSource 'gd32f403_rcu.c'),
+    (Join-Path $vendorSplSource 'gd32f403_fmc.c'),
+    (Join-Path $vendorSplSource 'gd32f403_exti.c'),
+    (Join-Path $vendorSplSource 'gd32f403_gpio.c'),
+    (Join-Path $vendorSplSource 'gd32f403_dma.c')
 )
 $phase8LinkObjects = @()
 for ($index = 0; $index -lt $phase8LinkSources.Count; ++$index) {

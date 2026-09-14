@@ -51,7 +51,7 @@
 
 ## 5. SystemClock_Config
 
-重写为 GD32 原生实现，不复制 STM32 PLL 参数。当前官方 `system_gd32f403.c` 使用 25 MHz HXTAL 配置 168 MHz；产品必须核对实际晶振、Flash wait state、USB 48 MHz、APB1/APB2、ADC 和 TIMER 时钟。兼容层的 `HAL_RCC_OscConfig()` 可控制 HSI/HSE，但请求 `RCC_PLL_ON` 会返回 `HAL_ERROR`；PLL 必须先由 GD32 原生代码建立。
+重写为 GD32 原生实现，不复制 STM32 PLL 参数。官方 V3.0.3 `system_gd32f403.c` 默认选择 HXTAL PLL 168 MHz，并通过 `gd32f403.h` 的 `HXTAL_VALUE` 解释外部晶振；`GD32403Z-EVAL` 原理图的实例是 25 MHz，不代表所有 RET6 板都是 25 MHz。产品必须核对实际晶振、PLL/PREDV 链、Flash wait state、USB 48 MHz、APB1/APB2、ADC 和 TIMER 时钟。兼容层的 `HAL_RCC_OscConfig()` 可控制 HSI/HSE，但请求 `RCC_PLL_ON` 会返回 `HAL_ERROR`；PLL 必须先由 GD32 原生代码建立。
 
 时钟改变后调用：
 

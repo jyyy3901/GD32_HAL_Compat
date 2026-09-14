@@ -34,6 +34,8 @@
 
 STM32F401VEH6 与 GD32F403RET6 不是引脚兼容替换。源器件存在而目标封装或目标芯片不可用的 GPIOE/H、I2C3、SPI4 等资源需要业务工程重新分配。兼容层不会为这些资源返回成功。
 
+`GD32F403_Demo_Suites_V3.0.3` 中的配套板是 GD32403Z-EVAL（GD32F403ZET6/LQFP144），不是 GD32F403RET6/LQFP64。其 CMSIS/SPL 可作为同系列软件依赖，但示例的引脚、端口、时钟、外设连线和板级初始化不属于 RET6 透明兼容范围。
+
 ## 板级待验证
 
 必须验证时钟、NVIC 优先级、共享 IRQ、UART 波特率/错误注入、DMA 请求冲突与 normal/circular 状态、TIMER PWM/捕获/级联/TRGO、ADC 输入范围/采样时间/触发/DMA/校准，以及所有目标引脚和 AFIO remap。代码检查结果不等于硬件或量产签核。

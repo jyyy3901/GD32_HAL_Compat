@@ -4,7 +4,7 @@
 
 面向 `STM32F401VEH6 HAL 应用 -> GD32F403RET6 SPL` 的源码兼容层。项目保留 HAL/Port 分层与既有状态机，并提供受严格矩阵约束的 CMSIS/Register compatibility；不复制 STM32 HAL/CMSIS，不修改官方 GD32 文件，也不为不存在的能力返回假成功。
 
-当前兼容基线为 GD32F403 SPL `V3.0.3` 与 STM32F4 HAL reference `V1.8.5`；使用其他厂商库版本时必须重新运行完整检查并核对目标手册。
+当前兼容基线为 GD32F403 SPL `V3.0.3` 与 STM32F4 HAL reference `V1.8.5`。已用 `GD32F403_Demo_Suites_V3.0.3/GD32F403_Firmware_Library` 中的官方 CMSIS/SPL 重跑目标编译和链接；使用其他厂商库版本时必须重新运行完整检查并核对目标手册。
 
 ## 当前能力
 
@@ -50,10 +50,11 @@ Include path：
 ```text
 GD32_HAL_Compat/Include
 GD32_HAL_Compat/Port
-GD32F403RET6
-GD32F403RET6/CMSIS
-GD32F403RET6/CMSIS/GD/GD32F403/Include
-GD32F403RET6/GD32F403_standard_peripheral/Include
+<GD32F403_VendorRoot>
+<GD32F403_VendorRoot>/CMSIS
+<GD32F403_VendorRoot>/CMSIS/GD/GD32F403/Include
+<GD32F403_VendorRoot>/GD32F403_standard_peripheral/Include
+<ProductProjectConfig>  # 包含项目自己的 gd32f403_libopt.h
 ```
 
 兼容层公共头文件：
@@ -92,7 +93,7 @@ Port/gd32_irq_port.c
 Port/gd32_rcc_port.c
 ```
 
-同时加入官方 CMSIS system/startup，以及所用模块的 GD32 SPL 源文件。不要复制或修改官方库到本仓库。
+同时加入官方 CMSIS system/startup、所用模块的 GD32 SPL 源文件，以及产品工程自己的 `gd32f403_libopt.h`。官方 Firmware Library 根目录不带该选择头，Demo 将它放在各应用工程内；不要从无关 Demo 盲目复制全模块配置。不要复制或修改官方库到本仓库。
 
 ## IRQ 示例
 
@@ -136,7 +137,14 @@ pwsh.exe -File .\Tests\run_checks.ps1
 pwsh.exe -File .\Tests\run_iar_checks.ps1
 ```
 
-`run_checks.ps1` 包含 ARM Cortex-M4 `-Wall -Wextra -Werror` 编译、与官方 GD32 SPL 的目标 ELF 链接、unsupported compile guards、Clang Analyzer、Instance/RCC 映射及各模块 Host 状态机测试。IAR 检查独立运行；未安装 IAR 时脚本明确输出 `SKIPPED`，不会伪报通过。
+`run_checks.ps1` 包含 ARM Cortex-M4 `-Wall -Wextra -Werror` 编译、与官方 GD32 SPL 的目标 ELF 链接、unsupported compile guards、Clang Analyzer、Instance/RCC 映射及各模块 Host 状态机测试。两个脚本均可用 `-VendorRoot <path>` 指向只读的官方固件库根目录；默认为相邻的 `../GD32F403RET6`。例如：
+
+```powershell
+pwsh.exe -File .\Tests\run_checks.ps1 `
+  -VendorRoot '..\GD32F403_Demo_Suites_V3.0.3\GD32F403_Firmware_Library'
+```
+
+IAR 检查独立运行；未安装 IAR 时脚本明确输出 `SKIPPED`，不会伪报通过。
 
 ## 文档
 

@@ -1,11 +1,15 @@
 param(
-    [string]$IarPath
+    [string]$IarPath,
+    [string]$VendorRoot
 )
 
 $ErrorActionPreference = 'Stop'
 
 $project = Split-Path -Parent $PSScriptRoot
 $workspace = Split-Path -Parent $project
+if ([string]::IsNullOrWhiteSpace($VendorRoot)) {
+    $VendorRoot = Join-Path $workspace 'GD32F403RET6'
+}
 $build = Join-Path $PSScriptRoot 'build\iar'
 
 function Find-IarTool {
@@ -75,12 +79,13 @@ Write-Output "IAR linker: $ilinkarm"
 New-Item -ItemType Directory -Force -Path $build | Out-Null
 
 $includes = @(
+    (Join-Path $PSScriptRoot 'ArmShims'),
     (Join-Path $project 'Include'),
     (Join-Path $project 'Port'),
-    (Join-Path $workspace 'GD32F403RET6'),
-    (Join-Path $workspace 'GD32F403RET6\CMSIS'),
-    (Join-Path $workspace 'GD32F403RET6\CMSIS\GD\GD32F403\Include'),
-    (Join-Path $workspace 'GD32F403RET6\GD32F403_standard_peripheral\Include')
+    $VendorRoot,
+    (Join-Path $VendorRoot 'CMSIS'),
+    (Join-Path $VendorRoot 'CMSIS\GD\GD32F403\Include'),
+    (Join-Path $VendorRoot 'GD32F403_standard_peripheral\Include')
 )
 
 foreach ($include in $includes) {
