@@ -4,7 +4,7 @@
 
 STM32 `TIM_TS_ITR0..3` 的数字只是“目标 TIM 的第几个内部输入”，不是全局源编号。GD32 `TIMER_SMCFG_TRGSEL_ITI0..3` 也按目标 TIMER 具有不同来源。因此 `Port/stm32_timer_trigger_map.c` 先解析 STM32F401 ITR 的源定时器语义，再在目标 GD32 TIMER 的 ITI 矩阵中寻找同一源；找不到即返回错误。
 
-## 0.10.0 可保持语义的映射
+## 可保持语义的映射
 
 | STM32 slave | ITR0 | ITR1 | ITR2 | ITR3 |
 |---|---|---|---|---|

@@ -1,6 +1,6 @@
 # STM32F401VEH6 到 GD32F403RET6 移植指南
 
-> 0.10.0 的架构、映射和限制以 `ARCHITECTURE.md`、`STM32_GD32_MAPPING.md`、`REGISTER_COMPATIBILITY_MATRIX.md`、`LIMITATION.md` 为准。
+> 当前架构、映射和限制以 `ARCHITECTURE.md`、`STM32_GD32_MAPPING.md`、`REGISTER_COMPATIBILITY_MATRIX.md`、`LIMITATION.md` 为准。
 
 ## 1. 先做硬件迁移审计
 
@@ -113,7 +113,7 @@ TIMER IRQ 也使用 GD32 startup 名称。例如兼容层 `TIM2` 对应 `TIMER1_
 
 ## 9. DMA Instance 与请求迁移
 
-STM32 的 `DMA1/2_Streamx + Init.Channel` 不是 GD32 的可选请求路由。USART1/2/6、ADC1、SPI1/2/3、I2C1/2 的已确认唯一组合在 `HAL_DMA_Init()` 时转换。0.10.2 对 TIM1..5 的 RM0368 request 保存 TIMER semantic origin，并在每次 `HAL_TIM_Base/OC/PWM/IC_Start_DMA()` 时结合 TIM Instance 和 UPDATE/CCx event 验证或重映射到目标固定 Channel/request。未覆盖的组合按以下步骤显式迁移：
+STM32 的 `DMA1/2_Streamx + Init.Channel` 不是 GD32 的可选请求路由。USART1/2/6、ADC1、SPI1/2/3、I2C1/2 的已确认唯一组合在 `HAL_DMA_Init()` 时转换。TIM1..5 的 RM0368 request 保存 TIMER semantic origin，并在每次 `HAL_TIM_Base/OC/PWM/IC_Start_DMA()` 时结合 TIM Instance 和 UPDATE/CCx event 验证或重映射到目标固定 Channel/request。未覆盖的组合按以下步骤显式迁移：
 
 1. 从 User Manual 表 10-3/10-4 找到目标外设请求固定 Channel。
 2. 把 `Instance` 改为 `GD32_DMA0_CHANNELx` 或 `GD32_DMA1_CHANNELx`。
@@ -151,7 +151,7 @@ UART 固定映射如下；必须同时匹配物理 Channel 和请求令牌：
 2. 把 TIM2/TIM5 的 ARR、CNT、CCR、DMA buffer 全部审计为 `<= 0xFFFF`；需要更大范围时重构，不接受截断。
 3. PWM/OC/IC GPIO 和 remap 仍在 MSP 中按 GD32 Datasheet/AFIO 原生配置。
 4. 不修改 `TIM_TS_ITR0..3` 常量；兼容层会按 F401 源连接与 GD ITI 矩阵解析。不等价连接会返回 `HAL_ERROR`，此时必须重新选择级联拓扑。
-5. TIMER DMA buffer 使用 `uint32_t`，DMA 配置使用 WORD/WORD、外设不递增、内存递增，并选用对应 `GD32_DMA_REQUEST_TIMERx_*`。
+5. TIMER DMA 接受严格配对的 HALFWORD/HALFWORD 或 WORD/WORD；buffer 分别按 `uint16_t` 或 `uint32_t` item 解释并满足对应对齐，`Length` 始终是 item 数。输出数据不得超过目标 16 位 TIMER 寄存器范围，外设地址不递增、内存地址递增，并选用对应 `GD32_DMA_REQUEST_TIMERx_*`。
 6. 编码器、互补输出、死区/刹车、Hall、DMA Burst 必须保留为待重构项，不能调用未提供 API。
 
 ## 11. GPIO AF / remap
@@ -190,6 +190,8 @@ FLASH 默认无可写范围。先在 GD32 链接脚本中建立独立、2 KB 对
 - IAR EWARM 9.30：使用 IAR 关键字/CMSIS 定义；统一 static-assert 宏在 C11 不可用时退化为 typedef 检查。
 
 发布前要分别建立 IAR EWARM 9.30、GCC ARM Embedded、ARMClang 工程；仓库自动检查会报告当前主机实际可用并执行的编译器，未安装的工具链不能视为已验证。
+
+GCC/Clang/Host/target-link 完整检查使用 `Tests/run_checks.ps1`；IAR 编译检查独立使用 `Tests/run_iar_checks.ps1`。IAR 未安装时后者只输出 `SKIPPED - IAR compiler not found`，不代表 IAR 验证通过。
 
 ## 16. 最小上板顺序
 

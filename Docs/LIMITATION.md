@@ -1,8 +1,8 @@
-# 0.10.2 限制与兼容等级
+# 限制与兼容等级
 
 ## API 状态
 
-| 模块 | 0.10.0 范围 | 等级 |
+| 模块 | 当前范围 | 等级 |
 |---|---|---|
 | HAL Core/Tick | Init/DeInit、Tick、Delay、UID、错误钩子 | 接口兼容 |
 | Cortex/NVIC/MPU | 常用 NVIC、SysTick、MPU 子集 | 接口兼容 |
@@ -11,7 +11,7 @@
 | DMA | Init/DeInit、Start/Start_IT、Poll、Abort、IRQ、Callback | 接口兼容，内部完全采用 GD32 Channel 模型 |
 | TIMER | Base、PWM、OC、IC、OnePulse、IRQ、DMA、Master/Slave、TRGO | 接口兼容 |
 | ADC | Init、Channel、Start/Stop、Poll/IT/DMA、IRQ、校准 | 接口兼容 |
-| I2C/SPI/EXTI/RCC/FLASH | 保留 0.8.0 已实现安全子集 | 回归保护，不是本次扩展目标 |
+| I2C/SPI/EXTI/RCC/FLASH | 已实现的安全子集 | 接口兼容，未实现项明确失败 |
 
 ## 明确不兼容
 
@@ -23,7 +23,7 @@
 - ADC 在 HAL 进入时检测到 `ADON=0` 会使 calibration-valid 失效并重新校准；direct `ADON+SWSTART` 在 strict mode 不支持。
 - 应用若在两次 compatibility-layer 调用之间直接清除又重新置位 `ADON`，最终寄存器状态与“从未掉电”相同，纯 C 寄存器 overlay 无法观测这段历史；该序列不能透明保证重新校准，必须改走 `HAL_ADC_Stop()/HAL_ADC_Start()` 或在掉电期间调用兼容层。此限制不做假兼容声明。
 - GPIO MODER/OTYPER/OSPEEDR/PUPDR/AFR、RCC、I2C、DMA Stream、FLASH/FMC 的整块 STM32 register overlay 不提供。
-- TIMER Encoder、Hall、dead-time/break、complementary output、DMA burst 不在 0.10.0 范围。
+- TIMER Encoder、Hall、dead-time/break、complementary output、DMA burst 不在当前兼容范围。
 - ADC falling/both external trigger edge、480-cycle sampling、不可映射 trigger、per-conversion EOC 序列语义不伪造。
 - `USE_HAL_*_REGISTER_CALLBACKS` 运行时回调注册未实现；使用 weak Callback。
 - GPIO STM32 AF 编号不自动转换成 GD32 AFIO remap；引脚与 remap 必须按目标板重配。
@@ -36,4 +36,4 @@ STM32F401VEH6 与 GD32F403RET6 不是引脚兼容替换。源器件存在而目�
 
 ## 板级待验证
 
-必须验证时钟、NVIC 优先级、共享 IRQ、UART 波特率/错误注入、DMA 请求冲突与 normal/circular 状态、TIMER PWM/捕获/级联/TRGO、ADC 输入范围/采样时间/触发/DMA/校准，以及所有目标引脚和 AFIO remap。0.10.2 的代码检查结果不等于硬件或量产签核。
+必须验证时钟、NVIC 优先级、共享 IRQ、UART 波特率/错误注入、DMA 请求冲突与 normal/circular 状态、TIMER PWM/捕获/级联/TRGO、ADC 输入范围/采样时间/触发/DMA/校准，以及所有目标引脚和 AFIO remap。代码检查结果不等于硬件或量产签核。

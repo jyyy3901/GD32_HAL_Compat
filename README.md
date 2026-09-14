@@ -1,20 +1,19 @@
-# GD32 HAL Compatibility Layer 0.10.2
+# GD32 HAL Compatibility Layer
 
-面向 `STM32F401VEH6 HAL 应用 -> GD32F403RET6 SPL` 的源码兼容层。0.10.0 在 0.9.0 状态机与 Port 分层上增加受严格矩阵约束的 CMSIS/Register compatibility；不复制 STM32 HAL/CMSIS，不修改官方 GD32 文件，也不为不存在的能力返回假成功。
+当前版本：`0.10.2`。
 
-## 0.10.2 修复范围
+面向 `STM32F401VEH6 HAL 应用 -> GD32F403RET6 SPL` 的源码兼容层。项目保留 HAL/Port 分层与既有状态机，并提供受严格矩阵约束的 CMSIS/Register compatibility；不复制 STM32 HAL/CMSIS，不修改官方 GD32 文件，也不为不存在的能力返回假成功。
 
-- DMA Handle 明确记录 native、STM32 unique、STM32 TIMER semantic mapping origin；
-- STM32 TIMER Stream Handle 在每次 TIM DMA Start 时重新验证 event，并可在 READY 状态下安全重映射到不同 GD32 physical Channel/request；
-- Handle 记录 active TIM DMA ID，completion/half/error callback 不再通过第一个相同 Handle 指针猜测 event；
-- 新增 shared TIM1 `DMA2_Stream6 + DMA_CHANNEL_0` 的 CC1/CC2/CC3、BUSY、ownership conflict、unsupported 和 native-path 回归测试；新增独立 IAR 9.30 compile-check 脚本。
+当前兼容基线为 GD32F403 SPL `V3.0.3` 与 STM32F4 HAL reference `V1.8.5`；使用其他厂商库版本时必须重新运行完整检查并核对目标手册。
 
-## 0.10.1 修复范围
+## 当前能力
 
-- ADC 只在同一连续上电周期复用 calibration-valid；检测到 `ADCON=0` 后先失效状态，再使能、稳定、reset calibration 和 calibration；
-- ADC DMA 支持严格匹配的 `HALFWORD/HALFWORD` 与 `WORD/WORD`，校验 buffer 对齐且 `Length` 始终表示 transfer item 数；
-- STM32 CubeMX TIM DMA Stream 初始化增加事件感知的延迟解析：`HAL_DMA_Init()` 保留 Stream/Channel/Direction 语义，`HAL_TIM_*_Start_DMA()` 结合 TIM Instance 和 `TIM_DMA_ID_xxx` 后才绑定 GD32 固定 Channel/request；
-- TIM DMA 的 HALFWORD buffer 按 `uint16_t` element 解释，WORD buffer 按 `uint32_t` element 做 16 位目标范围检查；normal/circular ownership 与回调状态保持既有语义。
+- 提供 HAL Core、GPIO、UART、DMA、TIMER、ADC、I2C、SPI、EXTI、RCC、FLASH 的已声明安全子集；
+- 提供 `stm32f4xx.h`、`stm32f401xe.h`、register type/bit/common macro compatibility；
+- GPIO、USART、TIMER、ADC、SPI、EXTI 只开放矩阵确认安全的寄存器/bit，默认启用 strict mode；
+- ADC HAL polling/IT/DMA Start 统一执行目标所需的 enable、稳定等待与 calibration gate，DMA 支持严格配对的 HALFWORD/HALFWORD 和 WORD/WORD；
+- 常见 CubeMX `DMAx_Streamy + DMA_CHANNEL_n` 初始化语法可映射到 GD32 固定 Channel/request；TIMER Stream 在每次 Start 时按 Instance/event 重新验证，shared Handle 使用 active event 状态；
+- DMA Stream 寄存器、RCC/GPIO 等不等价 register overlay、32 位 TIM2/TIM5 范围及其他无安全等价功能明确失败。
 
 ## 架构
 
@@ -28,15 +27,6 @@ Application
 ```
 
 公共 `GPIOA/USART1/TIM1/ADC1/SPI1` 等 Instance 现在是其 GD32 映射目标的真实物理地址，并只通过 `stm32f401_register_compat.h` 暴露已确认成员。资源表同时保留 STM32 semantic ID、public address、GD32 address、clock、IRQ 与 capability，既有 `GD32_HAL_ResolveInstance()`/Handle 缓存路径不变。DMA Stream 仍是不可解引用的初始化 token。
-
-## 0.10.0 增量范围
-
-- 保留 0.9.0 HAL Core、GPIO、UART、DMA、TIMER、ADC、I2C、SPI、EXTI、RCC、FLASH 状态机；
-- 新增 `stm32f4xx.h`、`stm32f401xe.h`、Register type/bit/common macro 层；
-- GPIO 安全子集、USART、TIMER、ADC 配置子集、SPI、EXTI 的直接符号访问；
-- 默认 strict mode，危险成员/bit 不暴露；
-- ADC calibration 独立于 enable 状态，所有 HAL polling/IT/DMA Start 统一校准；
-- 常见 CubeMX `DMAx_Streamy + DMA_CHANNEL_n` 初始化语法映射到 GD32 固定 Channel/request；Stream 寄存器继续编译失败。
 
 兼容层只暴露 STM32F401VE 实际存在且可安全映射的串口 `USART1/2/6`、定时器 `TIM1..5/TIM9..11` 和 `ADC1`。GD32 多出的 UART/TIMER/ADC 能力通过官方 SPL 原生使用，不借用不存在的 STM32F401 名称。
 
@@ -66,7 +56,7 @@ GD32F403RET6/CMSIS/GD/GD32F403/Include
 GD32F403RET6/GD32F403_standard_peripheral/Include
 ```
 
-0.10.0 新增公共头文件：
+兼容层公共头文件：
 
 ```text
 Include/stm32f4xx.h
@@ -75,7 +65,7 @@ Include/stm32f401_register_compat.h
 Include/stm32f401_register_bits.h
 ```
 
-核心源文件沿用 0.9.0：
+主要源文件：
 
 ```text
 Source/stm32f4xx_hal.c
@@ -143,14 +133,14 @@ Callback 只由 `HAL_*_IRQHandler()`/DMA 收尾路径调用，Port 不绕过 HAL
 
 ```powershell
 pwsh.exe -File .\Tests\run_checks.ps1
+pwsh.exe -File .\Tests\run_iar_checks.ps1
 ```
 
-检查包含 ARM Cortex-M4 `-Wall -Wextra -Werror` 编译、与官方 GD32 SPL 的目标 ELF 链接、unsupported compile guards、Clang Analyzer、Instance/RCC 映射及各模块 Host 状态机测试。
+`run_checks.ps1` 包含 ARM Cortex-M4 `-Wall -Wextra -Werror` 编译、与官方 GD32 SPL 的目标 ELF 链接、unsupported compile guards、Clang Analyzer、Instance/RCC 映射及各模块 Host 状态机测试。IAR 检查独立运行；未安装 IAR 时脚本明确输出 `SKIPPED`，不会伪报通过。
 
 ## 文档
 
-- [0.8.0 审查](Docs/V0.8.0_REVIEW.md)
-- [0.10.0 架构](Docs/ARCHITECTURE.md)
+- [当前架构](Docs/ARCHITECTURE.md)
 - [STM32/GD32 映射](Docs/STM32_GD32_MAPPING.md)
 - [限制](Docs/LIMITATION.md)
 - [TIMER trigger 映射](Docs/TIMER_TRIGGER_MAPPING.md)

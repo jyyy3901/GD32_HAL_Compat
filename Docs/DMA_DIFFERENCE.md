@@ -2,7 +2,7 @@
 
 ## 硬件模型
 
-| 项目 | STM32F401 | GD32F403 | 0.10.2 策略 |
+| 项目 | STM32F401 | GD32F403 | 当前策略 |
 |---|---|---|---|
 | 组织 | DMA1/2，各 8 Stream | DMA0 7 Channel、DMA1 5 Channel | 内部只使用 controller/channel |
 | 请求选择 | Stream + Channel selector | 外设请求固定接到物理 Channel | 使用 `GD32_DMA_REQUEST_*` 令牌校验 |
@@ -21,13 +21,15 @@
 - `gd32_dma_channel`：0..6 或 0..4；
 - `GD32_REQUEST`：已转换的 GD32 固定外设请求；
 - `GD32_RESOLVED_FROM`：原始 Stream/Channel token；
-- `GD32_IRQ_NUMBER` 与 `GD32_RESOURCE`。
+- `GD32_IRQ_NUMBER` 与 `GD32_RESOURCE`；
+- `GD32_MAPPING_ORIGIN`：native、STM32 unique 或 STM32 TIMER semantic 来源；
+- `GD32_ACTIVE_TIM_DMA_ID`：当前实际运行的 TIMER event。
 
 保留 `DMA_InitTypeDef.Channel/FIFOMode/FIFOThreshold/MemBurst/PeriphBurst` 是为了常见 STM32 初始化代码可编译，不代表目标硬件拥有这些能力。
 
 ## 初始化要求
 
-0.10.0 可保留矩阵中能够唯一判定的 CubeMX 初始化语法。例如 USART1 TX：
+矩阵中能够唯一判定的 CubeMX 初始化语法可以保留。例如 USART1 TX：
 
 ```c
 hdma.Instance = DMA2_Stream7;
@@ -37,9 +39,7 @@ hdma.Init.Direction = DMA_MEMORY_TO_PERIPH;
 
 `HAL_DMA_Init()` 根据 Stream、Channel selector、方向以及后续绑定的外设能力，将它转换为 GD32 的物理 controller/channel/request。USART1/2/6、ADC1、SPI1/2/3 和 I2C1/2 的唯一映射立即解析。
 
-TIMER request 不能只靠 Stream/Channel/Direction 唯一判定。0.10.1 对 RM0368 已确认的 TIM1..5 request 保存 deferred 状态；`HAL_TIM_Base/OC/PWM/IC_Start_DMA()` 使用 TIM Instance 与 `TIM_DMA_ID_UPDATE/CCx` 完成最终映射。STM32 request 与目标 GD32 event 任一不匹配即 `HAL_ERROR + ErrorHook`，不会把 Stream 数当作 GD32 Channel。显式目标 token 路径仍继续支持。
-
-0.10.2 进一步保存 mapping origin。来自 STM32 TIMER Stream 的 Handle 每次 Start 都重新验证 event；若 READY 且目标 physical Channel 可用，可以从先前 CC/UPDATE mapping 重绑定到当前 event。BUSY、目标 Channel 冲突或 source request 不允许时不会修改当前缓存。active TIM DMA ID 独立保存，shared Handle callback 不再以 `htim->hdma[]` 第一个同指针项推断 event。
+TIMER request 不能只靠 Stream/Channel/Direction 唯一判定。RM0368 已确认的 TIM1..5 request 保存 TIMER semantic mapping origin；`HAL_TIM_Base/OC/PWM/IC_Start_DMA()` 使用 TIM Instance 与 `TIM_DMA_ID_UPDATE/CCx` 完成最终映射。来自 STM32 TIMER Stream 的 Handle 每次 Start 都重新验证 event；若 READY 且目标 physical Channel 可用，可以从先前 CC/UPDATE mapping 重绑定到当前 event。BUSY、目标 Channel 冲突、STM32 request 或目标 GD32 event 不匹配时明确返回错误且不修改当前缓存。active TIM DMA ID 独立保存，shared Handle callback 不以 `htim->hdma[]` 第一个同指针项推断 event。显式目标 token 路径仍继续支持。
 
 ADC 与 TIMER DMA 仅接受成对的 `HALFWORD/HALFWORD` 或 `WORD/WORD`。HALFWORD buffer 按 16 位 item 递增，WORD buffer 按 32 位 item 递增；`Length` 对两种模式都表示 item 数。目标 TIMER CAR/CHxCV 支持 16/32 位访问但有效字段只有 16 位，因此 WORD 输出中的任何 `> 0xFFFF` 值都会在启动前失败。
 
@@ -76,4 +76,4 @@ hdma.Init.PeriphBurst = DMA_PBURST_SINGLE;
 - error/abort 会关闭 Channel、中断与父外设请求，并成对释放 owner。
 - GD32 IRQ 入口必须调用 `HAL_DMA_IRQHandler(&hdma)`。
 
-详细固定请求表仍可参考 `STM32_GD32_DIFFERENCES.md`，但产品必须以所用 GD32F403 User Manual 版本再次核对。
+固定请求关系以 `Port/gd32_instance_map.c` 与 `Port/gd32_dma_port.c` 为实现依据；产品仍必须用所采用版本的 GD32F403 User Manual 复核，并完成板级 DMA 竞争与时序验证。

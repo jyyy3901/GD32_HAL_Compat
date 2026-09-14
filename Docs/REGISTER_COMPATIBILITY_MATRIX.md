@@ -1,6 +1,6 @@
 # STM32F401 Register Compatibility Matrix
 
-本矩阵是 0.10.2 严格模式的公开契约。`A` 表示可安全直接 overlay；`B` 表示寄存器可访问，但必须使用本项目提供的 STM32 名称 bit mask 转换；`C` 表示不提供、编译失败或只能走 HAL/Port 明确错误路径。裸 STM32 绝对地址和 magic mask 永远不在兼容范围。
+本矩阵是 strict mode 的公开契约。`A` 表示可安全直接 overlay；`B` 表示寄存器可访问，但必须使用本项目提供的 STM32 名称 bit mask 转换；`C` 表示不提供、编译失败或只能走 HAL/Port 明确错误路径。裸 STM32 绝对地址和 magic mask 永远不在兼容范围。
 
 ## Coverage summary
 
@@ -54,7 +54,7 @@ STM32 `USART1/2/6` 分别指向 GD32 `USART0/1/2` 的真实地址。
 
 ## TIMER
 
-GD32 TIMER0..4/8..10 的主寄存器块与下表 offset 对齐；0.10.0 仍保留按 source/destination 转换 ITR→ITI 的 Port 逻辑。
+GD32 TIMER0..4/8..10 的主寄存器块与下表 offset 对齐；ITR→ITI 仍由 Port 按 source/destination 二维转换。
 
 | STM32 reg | offset | GD32 reg | offset | semantic | class |
 |---|---:|---|---:|---|---:|
@@ -134,7 +134,7 @@ STM32 Stream 与 GD32 physical Channel 是不同硬件模型。以下分类适�
 | M1AR | 0x10 | none | n/a | double buffer unavailable | C |
 | FCR | 0x14 | none | n/a | FIFO unavailable | C |
 
-Stream 名称只用于 `HAL_DMA_Init()` 的初始化 token；`DMA_Stream_TypeDef` 保持 incomplete type。TIM1..5 的已确认 Stream/Channel request 在 `HAL_DMA_Init()` 后保持 deferred，直至 TIM Start DMA 提供 UPDATE/CCx event 上下文；未确认或目标无对应固定 Channel 的组合明确失败。
+Stream 名称只用于 `HAL_DMA_Init()` 的初始化 token；`DMA_Stream_TypeDef` 保持 incomplete type。TIM1..5 的已确认 Stream/Channel request 保存 TIMER semantic origin；首次解析后仍在每次 TIM Start DMA 结合 UPDATE/CCx event 重新验证，并且只允许 READY Handle 安全重绑定。未确认或目标无对应固定 Channel 的组合明确失败。
 
 ## RCC / RCU
 

@@ -1,8 +1,8 @@
-# 0.10.x 架构
+# 当前架构
 
 ## 目标
 
-0.10.0 在 0.9.0 HAL/Port 状态机上增加经矩阵证明的 source-level CMSIS/Register compatibility。它不是 STM32 HAL/CMSIS 的复制品，也不追求 binary ABI。
+本项目在既有 HAL/Port 状态机上提供经矩阵证明的 source-level CMSIS/Register compatibility。它不是 STM32 HAL/CMSIS 的复制品，也不追求 binary ABI。
 
 ```text
 Application
@@ -43,11 +43,9 @@ GD32F403RET6
 - `capabilities`：DMA、主从、TRGO、通道数、流控等能力；
 - DMA controller/channel 等目标索引。
 
-Handle 继续缓存 `GD32_INSTANCE`、`GD32_IRQ_NUMBER`、`GD32_RESOURCE`。DMA 另存转换后的 `GD32_REQUEST` 与原 token。直接寄存器只允许 `REGISTER_COMPATIBILITY_MATRIX.md` 中 A/B 项；Class C 必须使用 HAL/Port 或在编译期失败。
+Handle 继续缓存 `GD32_INSTANCE`、`GD32_IRQ_NUMBER`、`GD32_RESOURCE`。DMA 另存转换后的 `GD32_REQUEST`、原 token、mapping origin 与 active TIM DMA ID。直接寄存器只允许 `REGISTER_COMPATIBILITY_MATRIX.md` 中 A/B 项；Class C 必须使用 HAL/Port 或在编译期失败。
 
-0.10.1 对 TIMER Stream 使用 deferred resolution。`HAL_DMA_Init()` 仅验证并保存可能对应多个 TIMER event 的 STM32 Stream/Channel/Direction，不占用或猜测 GD32 Channel；`HAL_TIM_Base/OC/PWM/IC_Start_DMA()` 再结合目标 TIM Instance 与 `TIM_DMA_ID_xxx`，先验证 STM32F401 request 表，再查询 GD32F403 固定 request 表并写入 Handle 缓存。最终物理 Channel 仍由既有 owner 表独占管理。
-
-0.10.2 为 DMA Handle 增加显式 mapping origin 和 active TIM DMA ID。TIMER semantic Handle 即使已经解析过，后续每次 Start 仍验证当前 event，并且只在 READY 时重绑定；callback 使用 active ID，不扫描 shared Handle 的第一个链接位置。
+TIMER Stream 使用 event-aware deferred resolution。`HAL_DMA_Init()` 仅验证并保存可能对应多个 TIMER event 的 STM32 Stream/Channel/Direction，不占用或猜测 GD32 Channel；`HAL_TIM_Base/OC/PWM/IC_Start_DMA()` 结合 TIM Instance 与 `TIM_DMA_ID_xxx`，先验证 STM32F401 request 表，再查询 GD32F403 固定 request 表。DMA Handle 保存显式 mapping origin 和 active TIM DMA ID，因此 TIMER semantic Handle 每次 Start 都会验证当前 event，并且只在 READY 时重绑定；callback 使用 active ID，不扫描 shared Handle 的第一个链接位置。最终物理 Channel 仍由 owner 表独占管理。
 
 ## Strict mode
 

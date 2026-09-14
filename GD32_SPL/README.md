@@ -2,7 +2,7 @@
 
 本目录不内置 GD32 官方 SPL，避免兼容层维护厂商源码分叉。产品工程应使用 GD32F403 Standard Peripheral Library V3.0.3 或经项目验证的兼容版本，并加入实际使用模块的源文件。
 
-0.9.0 核心范围需要 RCU、GPIO、USART、DMA、TIMER、ADC；既有 I2C、SPI、EXTI、FMC 功能还分别需要对应 SPL 源文件。
+当前兼容范围需要 RCU、GPIO、USART、DMA、TIMER、ADC；I2C、SPI、EXTI、FMC 功能还分别需要对应 SPL 源文件。
 
 规则：
 
