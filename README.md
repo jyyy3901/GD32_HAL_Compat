@@ -1,6 +1,6 @@
 # GD32 HAL Compatibility Layer
 
-当前版本：`0.10.2`。
+当前版本：`0.10.3`。
 
 面向 `STM32F401VEH6 HAL 应用 -> GD32F403RET6 SPL` 的源码兼容层。项目保留 HAL/Port 分层与既有状态机，并提供受严格矩阵约束的 CMSIS/Register compatibility；不复制 STM32 HAL/CMSIS，不修改官方 GD32 文件，也不为不存在的能力返回假成功。
 
@@ -85,8 +85,12 @@ Port/gd32_gpio_port.c
 Port/gd32_uart_port.c
 Port/gd32_dma_port.c
 Port/gd32_timer_port.c
+Port/gd32_timer_dma_port.c
 Port/stm32_timer_trigger_map.c
 Port/gd32_adc_port.c
+Port/gd32_i2c_port.c
+Port/gd32_i2c_flag_port.c
+Port/gd32_spi_port.c
 Port/gd32_instance_map.c
 Port/gd32_tick_port.c
 Port/gd32_irq_port.c
@@ -125,10 +129,12 @@ Callback 只由 `HAL_*_IRQHandler()`/DMA 收尾路径调用，Port 不绕过 HAL
 - FIFO、Burst、PFCTRL、double buffer 无目标等价，明确失败。
 - GD32F403 TIMER 全部 16 位；TIM2/TIM5 的 32 位范围必须重构。
 - ITR 不是按数字直译；`stm32_timer_trigger_map.c` 按 slave Timer 查源，再查 GD ITI 矩阵。
+- TIMER DMA semantic request 由 Port 明确映射到官方 `TIMER_DMA_UPD/CHxD/CMTD/TRGD`；不能把 enum 序号当作 `TIMER_DMAINTEN` bit。
 - ADC 外部触发只接受目标可保持语义的源和 rising edge；采样时间采用不短于请求值的保守映射，480 cycles 明确失败。
 - UART 只支持 16 倍过采样。
 - ADC `ADON` 直接 enable 后再走 HAL Start 仍会校准；严格模式不定义直接 `SWSTART`。
 - `TIM2/TIM5` 直接 CNT/ARR/CCR 访问仍只有 16 位，不能绕过 HAL 的范围保护。
+- `GD32_HAL_I2C_GetFlags()` 在 ADDSEND pending 时不会读 STAT1；只有明确的 address-clear 路径执行 STAT0→STAT1 状态转换。
 
 ## 自检
 

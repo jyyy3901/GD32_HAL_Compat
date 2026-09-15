@@ -30,9 +30,12 @@ static uint32_t mock_dma_destination;
 static uint32_t mock_dma_length;
 static GD32_HAL_PortError mock_error;
 static uint32_t mock_period_callback_count;
+static uint32_t mock_period_half_callback_count;
 static uint32_t mock_oc_callback_count;
 static uint32_t mock_pwm_callback_count;
+static uint32_t mock_pwm_half_callback_count;
 static uint32_t mock_ic_callback_count;
+static uint32_t mock_ic_half_callback_count;
 static uint32_t mock_trigger_callback_count;
 static uint32_t mock_error_callback_count;
 static const GD32_HAL_Resource mock_dma_ch1_resource =
@@ -77,9 +80,12 @@ static void mock_reset(void)
     mock_dma_length = 0U;
     mock_error = GD32_HAL_PORT_ERROR_NONE;
     mock_period_callback_count = 0U;
+    mock_period_half_callback_count = 0U;
     mock_oc_callback_count = 0U;
     mock_pwm_callback_count = 0U;
+    mock_pwm_half_callback_count = 0U;
     mock_ic_callback_count = 0U;
+    mock_ic_half_callback_count = 0U;
     mock_trigger_callback_count = 0U;
     mock_error_callback_count = 0U;
     mock_callback_channel = HAL_TIM_ACTIVE_CHANNEL_CLEARED;
@@ -410,12 +416,24 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     ++mock_period_callback_count;
     mock_callback_channel = htim->Channel;
 }
-void HAL_TIM_PeriodElapsedHalfCpltCallback(TIM_HandleTypeDef *htim) { (void)htim; }
+void HAL_TIM_PeriodElapsedHalfCpltCallback(TIM_HandleTypeDef *htim)
+{
+    ++mock_period_half_callback_count;
+    mock_callback_channel = htim->Channel;
+}
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim) { ++mock_oc_callback_count; mock_callback_channel = htim->Channel; }
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) { ++mock_ic_callback_count; mock_callback_channel = htim->Channel; }
-void HAL_TIM_IC_CaptureHalfCpltCallback(TIM_HandleTypeDef *htim) { (void)htim; }
+void HAL_TIM_IC_CaptureHalfCpltCallback(TIM_HandleTypeDef *htim)
+{
+    ++mock_ic_half_callback_count;
+    mock_callback_channel = htim->Channel;
+}
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) { ++mock_pwm_callback_count; mock_callback_channel = htim->Channel; }
-void HAL_TIM_PWM_PulseFinishedHalfCpltCallback(TIM_HandleTypeDef *htim) { (void)htim; }
+void HAL_TIM_PWM_PulseFinishedHalfCpltCallback(TIM_HandleTypeDef *htim)
+{
+    ++mock_pwm_half_callback_count;
+    mock_callback_channel = htim->Channel;
+}
 void HAL_TIM_TriggerCallback(TIM_HandleTypeDef *htim) { (void)htim; ++mock_trigger_callback_count; }
 void HAL_TIM_TriggerHalfCpltCallback(TIM_HandleTypeDef *htim) { (void)htim; }
 void HAL_TIM_ErrorCallback(TIM_HandleTypeDef *htim)
@@ -575,6 +593,11 @@ static void test_pwm_dma(void)
     assert(hdma.gd32_dma_channel == 4U);
     assert(hdma.GD32_REQUEST == GD32_DMA_REQUEST_TIMER1_CH0);
     assert((mock_dma_requests & (1UL << GD32_HAL_TIMER_DMA_CC1)) != 0U);
+    assert(mock_interrupts == 0U);
+    hdma.XferHalfCpltCallback(&hdma);
+    assert(mock_pwm_half_callback_count == 1U);
+    assert(mock_callback_channel == HAL_TIM_ACTIVE_CHANNEL_1);
+    assert((mock_dma_requests & (1UL << GD32_HAL_TIMER_DMA_CC1)) != 0U);
     hdma.XferCpltCallback(&hdma);
     assert(HAL_TIM_GetChannelState(&htim, TIM_CHANNEL_1) == HAL_TIM_CHANNEL_STATE_READY);
     assert(mock_pwm_callback_count == 1U);
@@ -640,6 +663,15 @@ static void test_oc_ic_dma_width_and_guards(void)
                (const uint32_t *)(const void *)((uint8_t *)alignment_storage + 1U),
                1U) == HAL_ERROR);
 
+    assert(HAL_TIM_OC_Start_DMA(
+               &htim, TIM_CHANNEL_1,
+               (const uint32_t *)(const void *)half_values, 2U) == HAL_OK);
+    assert((mock_dma_requests & (1UL << GD32_HAL_TIMER_DMA_CC1)) != 0U);
+    assert(mock_interrupts == 0U);
+    assert(HAL_TIM_OC_Stop_DMA(&htim, TIM_CHANNEL_1) == HAL_OK);
+    assert(mock_dma_abort_count == 1U);
+    assert((mock_dma_requests & (1UL << GD32_HAL_TIMER_DMA_CC1)) == 0U);
+
     memset(&hdma, 0, sizeof(hdma));
     hdma.Instance = DMA1_Stream5;
     hdma.Init.Channel = DMA_CHANNEL_3;
@@ -662,6 +694,11 @@ static void test_oc_ic_dma_width_and_guards(void)
     assert(mock_dma_destination == (uint32_t)(uintptr_t)half_values);
     assert(hdma.GD32_INSTANCE == GD32_HAL_DMA0_CHANNEL4_ADDRESS);
     assert(hdma.GD32_REQUEST == GD32_DMA_REQUEST_TIMER1_CH0);
+    assert(mock_interrupts == 0U);
+    hdma.XferHalfCpltCallback(&hdma);
+    assert(mock_ic_half_callback_count == 1U);
+    assert(mock_callback_channel == HAL_TIM_ACTIVE_CHANNEL_1);
+    assert((mock_dma_requests & (1UL << GD32_HAL_TIMER_DMA_CC1)) != 0U);
     hdma.XferCpltCallback(&hdma);
     assert(mock_ic_callback_count == 1U);
     assert(HAL_TIM_IC_Stop_DMA(&htim, TIM_CHANNEL_1) == HAL_OK);
@@ -707,6 +744,10 @@ static void test_base_dma(void)
     assert(mock_dma_destination == GD32_HAL_TIMER1_ADDRESS + 0x2CU);
     assert(hdma.GD32_INSTANCE == GD32_HAL_DMA0_CHANNEL1_ADDRESS);
     assert(hdma.GD32_REQUEST == GD32_DMA_REQUEST_TIMER1_UP);
+    assert((mock_dma_requests & (1UL << GD32_HAL_TIMER_DMA_UPDATE)) != 0U);
+    assert(mock_interrupts == 0U);
+    hdma.XferHalfCpltCallback(&hdma);
+    assert(mock_period_half_callback_count == 1U);
     assert((mock_dma_requests & (1UL << GD32_HAL_TIMER_DMA_UPDATE)) != 0U);
     hdma.XferCpltCallback(&hdma);
     assert(htim.State == HAL_TIM_STATE_READY);

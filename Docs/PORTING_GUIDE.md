@@ -123,7 +123,7 @@ STM32 的 `DMA1/2_Streamx + Init.Channel` 不是 GD32 的可选请求路由。US
 
 ADC1 固定映射 GD ADC0，DMA 固定为 `GD32_DMA0_CHANNEL0 + GD32_DMA_REQUEST_ADC0`，方向 P2M，PINC disable，支持成对的 HALFWORD/HALFWORD 或 WORD/WORD。`DMAContinuousRequests=ENABLE` 必须搭配 circular；DISABLE 必须搭配 normal。`HAL_ADC_Init()` 后尚未校准，首次 Start/Start_IT/Start_DMA 会经过同一个 enable、稳定等待与 calibration gate。校准状态独立于 ADCON；HAL 进入时发现 ADC disabled 会先失效旧状态。HAL Stop/DeInit、ADC clock disable、peripheral reset 和 RCU reset 都使状态失效。direct `ADON+SWSTART` 绕过此 gate，在 strict mode 不提供 `ADC_CR2_SWSTART`；在兼容层未观察到 disabled 的情况下直接完成 ADON off/on 也无法透明追踪其掉电历史。
 
-I2C1/I2C2 映射 GD I2C0/I2C1。7 位 `DevAddress` 保持 STM HAL 左移一位约定；Mem/IsDeviceReady 仅支持 7 位。中断文件分别在 `I2C0_EV_IRQHandler`/`I2C0_ER_IRQHandler` 中调用 `HAL_I2C_EV_IRQHandler(&hi2c1)`/`HAL_I2C_ER_IRQHandler(&hi2c1)`，I2C1 对应同理。软件复位恢复不包含 GPIO SCL 脉冲；外部器件拉低 SDA/SCL 的产品必须实现独立板级恢复流程。
+I2C1/I2C2 映射 GD I2C0/I2C1。7 位 `DevAddress` 保持 STM HAL 左移一位约定；Mem/IsDeviceReady 仅支持 7 位。中断文件分别在 `I2C0_EV_IRQHandler`/`I2C0_ER_IRQHandler` 中调用 `HAL_I2C_EV_IRQHandler(&hi2c1)`/`HAL_I2C_ER_IRQHandler(&hi2c1)`，I2C1 对应同理。兼容层的 flag observation 在 ADDSEND pending 时只读 STAT0，明确的 `ClearAddress` 才执行 STAT0→STAT1 清除序列，以保留 1/2/3/N-byte 及 10-bit repeated-START 的 ACK/ACKPOS 时序。软件复位恢复不包含 GPIO SCL 脉冲；外部器件拉低 SDA/SCL 的产品必须实现独立板级恢复流程。
 
 SPI1/2/3 映射 GD SPI0/1/2。SPI DMA 固定映射如下，8 位帧使用 BYTE/BYTE，16 位帧使用 HALFWORD/HALFWORD，PINC disable、MINC enable：
 
@@ -162,6 +162,8 @@ STM32 的 `GPIO_AF7_USART1` 等数值不能用于选择 GD32 外设。迁移步�
 2. 判断是默认功能还是 AFIO remap。
 3. 使用 `gpio_pin_remap_config()` 明确配置 remap。
 4. 再使用 HAL_GPIO_Init 配置 AF_PP/AF_OD 电气模式，或全部使用 GD32 SPL 原生初始化。
+
+具体到 `STM32 I2C1 -> GD32 I2C0`：选择 PB8/PB9 时，产品 MSP 必须显式调用 `gpio_pin_remap_config(GPIO_I2C0_REMAP, ENABLE)`；使用 GD32 I2C1 的 PB10/PB11 不需要该 remap。兼容层不会从 `GPIO_AF4_I2C1` 或 Pin 自动猜测、切换 AFIO remap。
 
 PD0/PD1 还必须先停用 HXTAL，并完成 `GPIO_PD01_REMAP` 与板级审计，然后把 `GD32_HAL_ALLOW_PD01_GPIO` 设为 `1U`；默认配置会拒绝这两个引脚。
 

@@ -572,21 +572,6 @@ void GD32_HAL_TIMER_ClearFlag(uint32_t timer_address, uint32_t flags)
     timer_flag_clear(timer_address, flags);
 }
 
-void GD32_HAL_TIMER_SetDMARequest(uint32_t timer_address,
-                                  GD32_HAL_TIMERDMARequest request,
-                                  int enable)
-{
-    const uint16_t source = (uint16_t)(1U << (uint32_t)request);
-    if (enable != 0)
-    {
-        timer_dma_enable(timer_address, source);
-    }
-    else
-    {
-        timer_dma_disable(timer_address, source);
-    }
-}
-
 int GD32_HAL_TIMER_IsDMAChannelValid(uint32_t timer_address,
                                      GD32_HAL_TIMERDMARequest request,
                                      uint32_t channel_address,

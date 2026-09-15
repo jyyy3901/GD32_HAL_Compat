@@ -76,9 +76,11 @@ $compatSources = @(
     (Join-Path $project 'Port\gd32_dma_port.c'),
     (Join-Path $project 'Port\gd32_uart_port.c'),
     (Join-Path $project 'Port\gd32_timer_port.c'),
+    (Join-Path $project 'Port\gd32_timer_dma_port.c'),
     (Join-Path $project 'Port\stm32_timer_trigger_map.c'),
     (Join-Path $project 'Port\gd32_adc_port.c'),
     (Join-Path $project 'Port\gd32_i2c_port.c'),
+    (Join-Path $project 'Port\gd32_i2c_flag_port.c'),
     (Join-Path $project 'Port\gd32_spi_port.c'),
     (Join-Path $project 'Port\gd32_rcc_port.c'),
     (Join-Path $project 'Port\gd32_exti_port.c'),
@@ -226,6 +228,7 @@ $timLinkSources = @(
     (Join-Path $project 'Port\gd32_core_port.c'),
     (Join-Path $project 'Port\gd32_dma_port.c'),
     (Join-Path $project 'Port\gd32_timer_port.c'),
+    (Join-Path $project 'Port\gd32_timer_dma_port.c'),
     (Join-Path $project 'Port\stm32_timer_trigger_map.c'),
     (Join-Path $project 'Port\gd32_instance_map.c'),
     (Join-Path $PSScriptRoot 'target_tim_link_smoke.c'),
@@ -265,6 +268,27 @@ foreach ($symbol in @('TargetSmoke', 'HAL_TIM_Base_Init', 'timer_init')) {
     }
 }
 Write-Output 'TIM official GD32 SPL target link: PASS'
+
+$timDMARequestPortHostExe = Join-Path $build 'test_tim_dma_request_port_host.exe'
+& $gcc -std=c11 -Wall -Wextra -Werror `
+    -Wno-unused-parameter -Wno-int-to-pointer-cast `
+    -I (Join-Path $PSScriptRoot 'ArmShims') `
+    -I (Join-Path $project 'Include') `
+    -I (Join-Path $project 'Port') `
+    -I $VendorRoot `
+    -I $vendorCmsis `
+    -I $vendorDeviceInclude `
+    -I $vendorSplInclude `
+    (Join-Path $project 'Port\gd32_timer_dma_port.c') `
+    (Join-Path $PSScriptRoot 'test_tim_dma_request_port_host.c') `
+    -o $timDMARequestPortHostExe
+if ($LASTEXITCODE -ne 0) {
+    throw "TIM DMA request vendor Port test build failed: $LASTEXITCODE"
+}
+& $timDMARequestPortHostExe
+if ($LASTEXITCODE -ne 0) {
+    throw "TIM DMA request vendor Port test failed: $LASTEXITCODE"
+}
 
 $adcLinkBuild = Join-Path $armBuild 'adc_link'
 New-Item -ItemType Directory -Force -Path $adcLinkBuild | Out-Null
@@ -332,6 +356,7 @@ $phase7LinkSources = @(
     (Join-Path $project 'Port\gd32_instance_map.c'),
     (Join-Path $project 'Port\gd32_rcc_port.c'),
     (Join-Path $project 'Port\gd32_i2c_port.c'),
+    (Join-Path $project 'Port\gd32_i2c_flag_port.c'),
     (Join-Path $project 'Port\gd32_spi_port.c'),
     (Join-Path $PSScriptRoot 'target_i2c_spi_link_smoke.c'),
     (Join-Path $vendorSplSource 'gd32f403_i2c.c'),
@@ -709,6 +734,28 @@ if ($LASTEXITCODE -ne 0) {
 & $i2cHostExe
 if ($LASTEXITCODE -ne 0) {
     throw "I2C host test failed: $LASTEXITCODE"
+}
+
+$i2cFlagPortHostExe = Join-Path $build 'test_i2c_flag_port_host.exe'
+& $gcc -std=c11 -Wall -Wextra -Werror `
+    -Wno-unused-parameter -Wno-int-to-pointer-cast `
+    -I (Join-Path $PSScriptRoot 'I2CPortMocks') `
+    -I (Join-Path $PSScriptRoot 'ArmShims') `
+    -I (Join-Path $project 'Include') `
+    -I (Join-Path $project 'Port') `
+    -I $VendorRoot `
+    -I $vendorCmsis `
+    -I $vendorDeviceInclude `
+    -I $vendorSplInclude `
+    (Join-Path $project 'Port\gd32_i2c_flag_port.c') `
+    (Join-Path $PSScriptRoot 'test_i2c_flag_port_host.c') `
+    -o $i2cFlagPortHostExe
+if ($LASTEXITCODE -ne 0) {
+    throw "I2C side-effect-safe Port flag test build failed: $LASTEXITCODE"
+}
+& $i2cFlagPortHostExe
+if ($LASTEXITCODE -ne 0) {
+    throw "I2C side-effect-safe Port flag test failed: $LASTEXITCODE"
 }
 
 $spiHostExe = Join-Path $build 'test_spi_host.exe'

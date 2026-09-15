@@ -41,6 +41,8 @@ hdma.Init.Direction = DMA_MEMORY_TO_PERIPH;
 
 TIMER request 不能只靠 Stream/Channel/Direction 唯一判定。RM0368 已确认的 TIM1..5 request 保存 TIMER semantic mapping origin；`HAL_TIM_Base/OC/PWM/IC_Start_DMA()` 使用 TIM Instance 与 `TIM_DMA_ID_UPDATE/CCx` 完成最终映射。来自 STM32 TIMER Stream 的 Handle 每次 Start 都重新验证 event；若 READY 且目标 physical Channel 可用，可以从先前 CC/UPDATE mapping 重绑定到当前 event。BUSY、目标 Channel 冲突、STM32 request 或目标 GD32 event 不匹配时明确返回错误且不修改当前缓存。active TIM DMA ID 独立保存，shared Handle callback 不以 `htim->hdma[]` 第一个同指针项推断 event。显式目标 token 路径仍继续支持。
 
+最终打开/关闭 TIMER 外设请求时，semantic UPDATE/CC1..4/COM/TRIGGER 逐项转换为官方 SPL 的 `TIMER_DMA_UPD`、`TIMER_DMA_CH0D..CH3D`、`TIMER_DMA_CMTD`、`TIMER_DMA_TRGD`。这些是 `TIMER_DMAINTEN` 的 DMA 位，不是低位 TIMER interrupt enable；非法 semantic request 只触发 ErrorHook，不写目标 TIMER。
+
 ADC 与 TIMER DMA 仅接受成对的 `HALFWORD/HALFWORD` 或 `WORD/WORD`。HALFWORD buffer 按 16 位 item 递增，WORD buffer 按 32 位 item 递增；`Length` 对两种模式都表示 item 数。目标 TIMER CAR/CHxCV 支持 16/32 位访问但有效字段只有 16 位，因此 WORD 输出中的任何 `> 0xFFFF` 值都会在启动前失败。
 
 显式目标映射语法继续支持：

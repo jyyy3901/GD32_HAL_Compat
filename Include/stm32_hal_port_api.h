@@ -713,6 +713,7 @@ void GD32_HAL_I2C_SendAddress(uint32_t i2c_address,
 void GD32_HAL_I2C_WriteData(uint32_t i2c_address, uint8_t data);
 uint8_t GD32_HAL_I2C_ReadData(uint32_t i2c_address);
 uint32_t GD32_HAL_I2C_GetFlags(uint32_t i2c_address);
+int GD32_HAL_I2C_IsBusBusy(uint32_t i2c_address);
 void GD32_HAL_I2C_ClearAddress(uint32_t i2c_address);
 uint32_t GD32_HAL_I2C_GetErrors(uint32_t i2c_address);
 void GD32_HAL_I2C_ClearErrors(uint32_t i2c_address, uint32_t errors);

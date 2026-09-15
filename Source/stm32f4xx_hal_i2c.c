@@ -148,8 +148,7 @@ static HAL_StatusTypeDef I2C_WaitBusFree(I2C_HandleTypeDef *hi2c,
                                          uint32_t timeout,
                                          uint32_t tickstart)
 {
-    while ((GD32_HAL_I2C_GetFlags(I2C_Address(hi2c)) &
-            GD32_HAL_I2C_FLAG_BUSY) != 0U)
+    while (GD32_HAL_I2C_IsBusBusy(I2C_Address(hi2c)) != 0)
     {
         if ((timeout != HAL_MAX_DELAY) &&
             ((timeout == 0U) || ((HAL_GetTick() - tickstart) >= timeout)))
@@ -275,8 +274,8 @@ static HAL_StatusTypeDef I2C_PollReceiveData(I2C_HandleTypeDef *hi2c,
     }
     else if (hi2c->XferCount == 2U)
     {
-        GD32_HAL_I2C_SetAck(address, 0);
         GD32_HAL_I2C_SetAckNext(address, 1);
+        GD32_HAL_I2C_SetAck(address, 0);
         GD32_HAL_I2C_ClearAddress(address);
     }
     else
@@ -727,8 +726,7 @@ static HAL_StatusTypeDef I2C_StartIT(I2C_HandleTypeDef *hi2c,
     {
         return HAL_BUSY;
     }
-    if ((GD32_HAL_I2C_GetFlags(I2C_Address(hi2c)) &
-         GD32_HAL_I2C_FLAG_BUSY) != 0U)
+    if (GD32_HAL_I2C_IsBusBusy(I2C_Address(hi2c)) != 0)
     {
         return HAL_BUSY;
     }
@@ -790,8 +788,8 @@ static void I2C_ConfigureReceiveAddress(I2C_HandleTypeDef *hi2c)
     }
     else if (hi2c->XferCount == 2U)
     {
-        GD32_HAL_I2C_SetAck(address, 0);
         GD32_HAL_I2C_SetAckNext(address, 1);
+        GD32_HAL_I2C_SetAck(address, 0);
         GD32_HAL_I2C_ClearAddress(address);
     }
     else

@@ -106,45 +106,6 @@ uint8_t GD32_HAL_I2C_ReadData(uint32_t i2c_address)
     return i2c_data_receive(i2c_address);
 }
 
-uint32_t GD32_HAL_I2C_GetFlags(uint32_t i2c_address)
-{
-    uint32_t flags = 0U;
-    if (i2c_flag_get(i2c_address, I2C_FLAG_SBSEND) == SET)
-    {
-        flags |= GD32_HAL_I2C_FLAG_START;
-    }
-    if (i2c_flag_get(i2c_address, I2C_FLAG_ADDSEND) == SET)
-    {
-        flags |= GD32_HAL_I2C_FLAG_ADDRESS;
-    }
-    if (i2c_flag_get(i2c_address, I2C_FLAG_BTC) == SET)
-    {
-        flags |= GD32_HAL_I2C_FLAG_BYTE_TRANSFER;
-    }
-    if (i2c_flag_get(i2c_address, I2C_FLAG_ADD10SEND) == SET)
-    {
-        flags |= GD32_HAL_I2C_FLAG_ADDRESS10;
-    }
-    if (i2c_flag_get(i2c_address, I2C_FLAG_RBNE) == SET)
-    {
-        flags |= GD32_HAL_I2C_FLAG_RX_NOT_EMPTY;
-    }
-    if (i2c_flag_get(i2c_address, I2C_FLAG_TBE) == SET)
-    {
-        flags |= GD32_HAL_I2C_FLAG_TX_EMPTY;
-    }
-    if (i2c_flag_get(i2c_address, I2C_FLAG_I2CBSY) == SET)
-    {
-        flags |= GD32_HAL_I2C_FLAG_BUSY;
-    }
-    return flags;
-}
-
-void GD32_HAL_I2C_ClearAddress(uint32_t i2c_address)
-{
-    i2c_flag_clear(i2c_address, I2C_FLAG_ADDSEND);
-}
-
 uint32_t GD32_HAL_I2C_GetErrors(uint32_t i2c_address)
 {
     uint32_t errors = 0U;

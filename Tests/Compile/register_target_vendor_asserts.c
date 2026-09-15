@@ -53,6 +53,25 @@ STM32_COMPAT_STATIC_ASSERT(TIM_DIER_UIE == TIMER_DMAINTEN_UPIE,
                            tim_uie_vendor_bit);
 STM32_COMPAT_STATIC_ASSERT(TIM_EGR_UG == TIMER_SWEVG_UPG,
                            tim_ug_vendor_bit);
+STM32_COMPAT_STATIC_ASSERT(TIMER_DMA_UPD == TIMER_DMAINTEN_UPDEN,
+                           tim_dma_update_vendor_bit);
+STM32_COMPAT_STATIC_ASSERT(TIMER_DMA_CH0D == TIMER_DMAINTEN_CH0DEN,
+                           tim_dma_ch0_vendor_bit);
+STM32_COMPAT_STATIC_ASSERT(TIMER_DMA_CH1D == TIMER_DMAINTEN_CH1DEN,
+                           tim_dma_ch1_vendor_bit);
+STM32_COMPAT_STATIC_ASSERT(TIMER_DMA_CH2D == TIMER_DMAINTEN_CH2DEN,
+                           tim_dma_ch2_vendor_bit);
+STM32_COMPAT_STATIC_ASSERT(TIMER_DMA_CH3D == TIMER_DMAINTEN_CH3DEN,
+                           tim_dma_ch3_vendor_bit);
+STM32_COMPAT_STATIC_ASSERT(TIMER_DMA_CMTD == TIMER_DMAINTEN_CMTDEN,
+                           tim_dma_commutation_vendor_bit);
+STM32_COMPAT_STATIC_ASSERT(TIMER_DMA_TRGD == TIMER_DMAINTEN_TRGDEN,
+                           tim_dma_trigger_vendor_bit);
+STM32_COMPAT_STATIC_ASSERT(
+    ((TIMER_DMA_UPD | TIMER_DMA_CH0D | TIMER_DMA_CH1D |
+      TIMER_DMA_CH2D | TIMER_DMA_CH3D | TIMER_DMA_CMTD |
+      TIMER_DMA_TRGD) & 0x00FFU) == 0U,
+    tim_dma_sources_do_not_overlap_interrupt_enable_bits);
 STM32_COMPAT_STATIC_ASSERT(ADC_SR_EOC == ADC_STAT_EOC,
                            adc_eoc_vendor_bit);
 STM32_COMPAT_STATIC_ASSERT(ADC_CR1_SCAN == ADC_CTL0_SM,

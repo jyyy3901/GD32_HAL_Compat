@@ -32,6 +32,35 @@ static uint32_t mock_error_callback;
 static uint32_t mock_msp_init;
 static uint32_t mock_msp_deinit;
 static GD32_HAL_PortError mock_port_error;
+static char mock_operations[256];
+static uint32_t mock_operation_count;
+
+static void MockLog(char operation)
+{
+    assert(mock_operation_count < sizeof(mock_operations));
+    mock_operations[mock_operation_count++] = operation;
+}
+
+static void MockClearLog(void)
+{
+    mock_operation_count = 0U;
+}
+
+static void MockExpectSequence(const char *sequence)
+{
+    uint32_t operation = 0U;
+    uint32_t expected;
+    for (expected = 0U; sequence[expected] != '\0'; ++expected)
+    {
+        while ((operation < mock_operation_count) &&
+               (mock_operations[operation] != sequence[expected]))
+        {
+            ++operation;
+        }
+        assert(operation < mock_operation_count);
+        ++operation;
+    }
+}
 
 static void MockReset(void)
 {
@@ -60,6 +89,7 @@ static void MockReset(void)
     mock_msp_init = 0U;
     mock_msp_deinit = 0U;
     mock_port_error = GD32_HAL_PORT_ERROR_NONE;
+    MockClearLog();
 }
 
 static I2C_HandleTypeDef MakeI2C(void)
@@ -154,6 +184,7 @@ void GD32_HAL_I2C_Start(uint32_t address)
         mock_ten_stage = 0;
     }
     ++mock_start_count;
+    MockLog('R');
     mock_flags |= GD32_HAL_I2C_FLAG_START | GD32_HAL_I2C_FLAG_BUSY;
 }
 
@@ -161,19 +192,20 @@ void GD32_HAL_I2C_Stop(uint32_t address)
 {
     assert(address == GD32_HAL_I2C0_ADDRESS);
     ++mock_stop_count;
+    MockLog('S');
     mock_flags &= ~GD32_HAL_I2C_FLAG_BUSY;
 }
 
 void GD32_HAL_I2C_SetAck(uint32_t address, int enable)
 {
     (void)address;
-    (void)enable;
+    MockLog((enable != 0) ? 'A' : 'a');
 }
 
 void GD32_HAL_I2C_SetAckNext(uint32_t address, int next)
 {
     (void)address;
-    (void)next;
+    MockLog((next != 0) ? 'P' : 'p');
 }
 
 void GD32_HAL_I2C_SendAddress(uint32_t address,
@@ -184,6 +216,7 @@ void GD32_HAL_I2C_SendAddress(uint32_t address,
     mock_addresses[mock_address_count] = device;
     mock_directions[mock_address_count] = receive;
     ++mock_address_count;
+    MockLog('Q');
     if ((mock_ready_after_trial > 0) && (mock_trial < mock_ready_after_trial))
     {
         ++mock_trial;
@@ -199,6 +232,7 @@ void GD32_HAL_I2C_SendAddress(uint32_t address,
 void GD32_HAL_I2C_WriteData(uint32_t address, uint8_t data)
 {
     assert(address == GD32_HAL_I2C0_ADDRESS);
+    MockLog('W');
     mock_tx[mock_tx_count++] = data;
     if (((data & 0xF8U) == 0xF0U) && (mock_ten_stage != 1))
     {
@@ -225,6 +259,7 @@ uint8_t GD32_HAL_I2C_ReadData(uint32_t address)
 {
     assert(address == GD32_HAL_I2C0_ADDRESS);
     assert(mock_rx_pos < mock_rx_count);
+    MockLog('D');
     return mock_rx[mock_rx_pos++];
 }
 
@@ -239,9 +274,16 @@ uint32_t GD32_HAL_I2C_GetFlags(uint32_t address)
     return mock_flags;
 }
 
+int GD32_HAL_I2C_IsBusBusy(uint32_t address)
+{
+    assert(address == GD32_HAL_I2C0_ADDRESS);
+    return ((mock_flags & GD32_HAL_I2C_FLAG_BUSY) != 0U) ? 1 : 0;
+}
+
 void GD32_HAL_I2C_ClearAddress(uint32_t address)
 {
     assert(address == GD32_HAL_I2C0_ADDRESS);
+    MockLog('C');
     mock_flags &= ~GD32_HAL_I2C_FLAG_ADDRESS;
 }
 
@@ -329,6 +371,63 @@ static void TestPollingAndMem(void)
     assert(rx[0] == 0xA1U && rx[1] == 0xB2U);
 }
 
+static void TestPollingReceiveOrder(uint16_t size,
+                                    const char *expected_sequence)
+{
+    I2C_HandleTypeDef hi2c;
+    uint8_t incoming[] = {0x11U, 0x22U, 0x33U, 0x44U};
+    uint8_t received[4] = {0U};
+
+    MockReset();
+    hi2c = MakeI2C();
+    assert(HAL_I2C_Init(&hi2c) == HAL_OK);
+    FeedRx(incoming, size);
+    MockClearLog();
+    assert(HAL_I2C_Master_Receive(&hi2c, 0xA0U, received,
+                                  size, 10U) == HAL_OK);
+    assert(memcmp(received, incoming, size) == 0);
+    MockExpectSequence(expected_sequence);
+}
+
+static void TestITReceiveOrder(uint16_t size,
+                               const char *expected_sequence)
+{
+    I2C_HandleTypeDef hi2c;
+    uint8_t incoming[] = {0x51U, 0x52U, 0x53U, 0x54U};
+    uint8_t received[4] = {0U};
+    uint32_t attempts;
+
+    MockReset();
+    hi2c = MakeI2C();
+    assert(HAL_I2C_Init(&hi2c) == HAL_OK);
+    FeedRx(incoming, size);
+    assert(HAL_I2C_Master_Receive_IT(&hi2c, 0xA0U,
+                                     received, size) == HAL_OK);
+    MockClearLog();
+    for (attempts = 0U; (attempts < 16U) && (mock_rx_callback == 0U);
+         ++attempts)
+    {
+        HAL_I2C_EV_IRQHandler(&hi2c);
+    }
+    assert(mock_rx_callback == 1U);
+    assert(hi2c.State == HAL_I2C_STATE_READY);
+    assert(memcmp(received, incoming, size) == 0);
+    MockExpectSequence(expected_sequence);
+}
+
+static void TestReceiveOrdering(void)
+{
+    TestPollingReceiveOrder(1U, "RaCSD");
+    TestPollingReceiveOrder(2U, "RPaCSDD");
+    TestPollingReceiveOrder(3U, "RACaDSDD");
+    TestPollingReceiveOrder(4U, "RACDaDSDD");
+
+    TestITReceiveOrder(1U, "QaCSD");
+    TestITReceiveOrder(2U, "QPaCSDD");
+    TestITReceiveOrder(3U, "QACaDSDD");
+    TestITReceiveOrder(4U, "QACDaDSDD");
+}
+
 static void TestITAndError(void)
 {
     I2C_HandleTypeDef hi2c = MakeI2C();
@@ -378,11 +477,13 @@ static void TestTenBitAddress(void)
 
     mock_tx_count = 0U;
     FeedRx(&incoming, 1U);
+    MockClearLog();
     assert(HAL_I2C_Master_Receive(&hi2c, 0x2AAU, &rx, 1U, 10U) == HAL_OK);
     assert(mock_tx_count == 3U);
     assert(mock_tx[0] == 0xF4U && mock_tx[1] == 0xAAU &&
            mock_tx[2] == 0xF5U);
     assert(rx == 0xC7U);
+    MockExpectSequence("RWWCRWaCSD");
 }
 
 static void TestReadyAndTimeoutRecovery(void)
@@ -391,8 +492,10 @@ static void TestReadyAndTimeoutRecovery(void)
     uint8_t tx = 0x55U;
     assert(HAL_I2C_Init(&hi2c) == HAL_OK);
     mock_ready_after_trial = 1;
+    MockClearLog();
     assert(HAL_I2C_IsDeviceReady(&hi2c, 0xA0U, 3U, 10U) == HAL_OK);
     assert(mock_address_count == 2U);
+    MockExpectSequence("RQSRQSC");
 
     mock_flags = GD32_HAL_I2C_FLAG_BUSY;
     mock_tick_increment = 1;
@@ -411,6 +514,7 @@ int main(void)
     TestReadyAndTimeoutRecovery();
     MockReset();
     TestTenBitAddress();
+    TestReceiveOrdering();
     puts("I2C host tests: PASS");
     return 0;
 }

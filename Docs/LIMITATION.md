@@ -26,7 +26,7 @@
 - TIMER Encoder、Hall、dead-time/break、complementary output、DMA burst 不在当前兼容范围。
 - ADC falling/both external trigger edge、480-cycle sampling、不可映射 trigger、per-conversion EOC 序列语义不伪造。
 - `USE_HAL_*_REGISTER_CALLBACKS` 运行时回调注册未实现；使用 weak Callback。
-- GPIO STM32 AF 编号不自动转换成 GD32 AFIO remap；引脚与 remap 必须按目标板重配。
+- GPIO STM32 AF 编号不自动转换成 GD32 AFIO remap；引脚与 remap 必须按目标板重配。例如 STM32 I2C1 映射 GD I2C0 后若选 PB8/PB9，MSP 必须显式启用 `GPIO_I2C0_REMAP`；通用 GPIO HAL 不会猜测。
 - UART 只支持 GD32 硬件的 16 倍过采样；`UART_OVERSAMPLING_8` 返回 `HAL_ERROR`。
 - RCC 只提供常用门控与有限时钟查询/配置，不复制 STM32 PLL/backup-domain 模型。
 
