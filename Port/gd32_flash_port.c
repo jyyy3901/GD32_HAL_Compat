@@ -1,4 +1,5 @@
 #include "gd32_hal_port.h"
+#include "gd32f403_fmc.h"
 
 static GD32_HAL_FLASHStatus GD32_HAL_FLASH_MapStatus(fmc_state_enum status)
 {

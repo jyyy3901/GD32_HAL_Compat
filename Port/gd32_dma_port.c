@@ -1,4 +1,5 @@
 #include "gd32_hal_port.h"
+#include "gd32f403_dma.h"
 #include <stddef.h>
 
 #define GD32_HAL_DMA_CHANNEL_COUNT 12U

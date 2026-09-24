@@ -1,4 +1,6 @@
 #include "gd32_hal_port.h"
+#include "gd32f403_fmc.h"
+#include "gd32f403_rcu.h"
 #include <stddef.h>
 
 static int GD32_HAL_RCC_MapAHBDivider(uint32_t divider, uint32_t *value)

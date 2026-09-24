@@ -1,4 +1,7 @@
 #include "gd32_hal_port.h"
+#include "gd32f403_dma.h"
+#include "gd32f403_exti.h"
+#include "gd32f403_rcu.h"
 #include <stddef.h>
 
 #define GD32_HAL_UID_BASE 0x1FFFF7E8UL

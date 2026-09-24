@@ -1,6 +1,8 @@
 #ifndef GD32F403_LIBOPT_H
 #define GD32F403_LIBOPT_H
 
+#define GD32_HAL_TEST_LIBOPT_INCLUDED 1
+
 /*
  * Test-only SPL module selection.  Official firmware packages keep this file
  * in each application project rather than in the library root.  Product

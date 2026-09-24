@@ -31,6 +31,8 @@ GD32F403RET6
 | `GD32_SPL/` | 官方 SPL 的外部集成说明 | 厂商源码副本或修改版 |
 | `Tests/` | ARM 严格编译、官方 SPL 链接、Analyzer、Host 状态机测试 | 把 Mock 结果当作板级签核 |
 
+`Include/stm32_hal_cmsis_bridge.h` 是公共层引入 GD32 device CMSIS 的唯一入口。它临时屏蔽 V3.0.3 device 头自动引入的 `gd32f403_libopt.h`，并恢复调用方原有宏状态。每个使用 SPL API/类型/寄存器宏的 `Port/*.c` 必须显式包含对应 `gd32f403_xxx.h`，不允许借 libopt 形成隐式依赖。
+
 ## Instance 与资源
 
 `GPIOA`、`USART1`、`TIM1`、`ADC1`、`SPI1` 等可安全寄存器访问的公共 Instance 是目标 GD32 外设的真实物理地址。DMA Stream 是 `0xF401xxxx` 形式的初始化 token，仍不可解引用。`Port/gd32_instance_map.c` 的每项资源同时保存：

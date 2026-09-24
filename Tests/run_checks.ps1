@@ -48,6 +48,72 @@ $armIncludes = @(
     '-I', $vendorSplInclude
 )
 
+$portHeader = Get-Content -LiteralPath (Join-Path $project 'Port\gd32_hal_port.h') -Raw
+if (($portHeader -notmatch '#include\s+"stm32_hal_cmsis_bridge\.h"') -or
+    ($portHeader -match '#include\s+"gd32f403\.h"')) {
+    throw 'gd32_hal_port.h must use the isolated CMSIS bridge'
+}
+$portDependencies = @{
+    'gd32_adc_port.c' = @('gd32f403_adc.h', 'gd32f403_gpio.h', 'gd32f403_rcu.h')
+    'gd32_core_port.c' = @('gd32f403_dma.h', 'gd32f403_exti.h', 'gd32f403_rcu.h')
+    'gd32_dma_port.c' = @('gd32f403_dma.h')
+    'gd32_exti_port.c' = @('gd32f403_exti.h', 'gd32f403_gpio.h', 'gd32f403_rcu.h')
+    'gd32_flash_port.c' = @('gd32f403_fmc.h')
+    'gd32_gpio_port.c' = @('gd32f403_exti.h', 'gd32f403_gpio.h', 'gd32f403_rcu.h')
+    'gd32_i2c_flag_port.c' = @('gd32f403_i2c.h')
+    'gd32_i2c_port.c' = @('gd32f403_i2c.h')
+    'gd32_instance_map.c' = @('gd32f403_rcu.h')
+    'gd32_rcc_port.c' = @('gd32f403_fmc.h', 'gd32f403_rcu.h')
+    'gd32_rcc_reset_port.c' = @('gd32f403_rcu.h')
+    'gd32_spi_port.c' = @('gd32f403_spi.h')
+    'gd32_timer_dma_port.c' = @('gd32f403_timer.h')
+    'gd32_timer_port.c' = @('gd32f403_timer.h')
+    'gd32_uart_port.c' = @('gd32f403_rcu.h', 'gd32f403_usart.h')
+}
+foreach ($entry in $portDependencies.GetEnumerator()) {
+    $sourceText = Get-Content -LiteralPath (Join-Path $project "Port\$($entry.Key)") -Raw
+    foreach ($header in $entry.Value) {
+        if ($sourceText -notmatch ('#include\s+"' + [regex]::Escape($header) + '"')) {
+            throw "Port SPL dependency is not explicit: $($entry.Key) -> $header"
+        }
+    }
+}
+$rawDeviceIncludes = Get-ChildItem -LiteralPath (Join-Path $project 'Port') -Filter '*.c' |
+    Select-String -Pattern '#include\s+"gd32f403\.h"'
+if ($null -ne $rawDeviceIncludes) {
+    throw 'Port source must not bypass the isolated CMSIS bridge with gd32f403.h'
+}
+Write-Output 'Port explicit GD32 SPL header dependencies: PASS'
+
+$publicHeaderIsolation = Join-Path $PSScriptRoot 'public_hal_header_isolation.c'
+& $clang --target=arm-none-eabi -mcpu=cortex-m4 -mthumb -std=c11 `
+    -ffreestanding -Wall -Wextra -Werror @armIncludes `
+    -fsyntax-only $publicHeaderIsolation
+if ($LASTEXITCODE -ne 0) {
+    throw 'Public HAL header isolation failed with default macro state'
+}
+& $clang --target=arm-none-eabi -mcpu=cortex-m4 -mthumb -std=c11 `
+    -ffreestanding -Wall -Wextra -Werror @armIncludes `
+    -DUSE_STDPERIPH_DRIVER -DGD32_HAL_TEST_EXPECT_USE_STDPERIPH_DRIVER `
+    -fsyntax-only $publicHeaderIsolation
+if ($LASTEXITCODE -ne 0) {
+    throw 'Public HAL header isolation failed with USE_STDPERIPH_DRIVER enabled'
+}
+Write-Output 'Public HAL header SPL isolation and macro restore: PASS'
+
+$readmeText = Get-Content -LiteralPath (Join-Path $project 'README.md') -Raw
+if ($readmeText -notmatch '当前版本：`0\.10\.4`') {
+    throw 'README release version is not 0.10.4'
+}
+$staleReleaseVersion = Get-ChildItem -LiteralPath @(
+    (Join-Path $project 'README.md'),
+    (Join-Path $project 'Docs')
+) -File -Recurse | Select-String -Pattern '0\.10\.[0-3]'
+if ($null -ne $staleReleaseVersion) {
+    throw 'Stale 0.10.x release version remains in README or Docs'
+}
+Write-Output 'Release documentation version 0.10.4: PASS'
+
 $compatSources = @(
     (Join-Path $project 'Source\stm32f4xx_hal.c'),
     (Join-Path $project 'Source\stm32f4xx_hal_gpio.c'),
@@ -83,6 +149,7 @@ $compatSources = @(
     (Join-Path $project 'Port\gd32_i2c_flag_port.c'),
     (Join-Path $project 'Port\gd32_spi_port.c'),
     (Join-Path $project 'Port\gd32_rcc_port.c'),
+    (Join-Path $project 'Port\gd32_rcc_reset_port.c'),
     (Join-Path $project 'Port\gd32_exti_port.c'),
     (Join-Path $project 'Port\gd32_flash_port.c'),
     (Join-Path $project 'Port\gd32_tick_port.c'),
@@ -412,6 +479,7 @@ $phase8LinkSources = @(
     (Join-Path $project 'Port\gd32_core_port.c'),
     (Join-Path $project 'Port\gd32_instance_map.c'),
     (Join-Path $project 'Port\gd32_rcc_port.c'),
+    (Join-Path $project 'Port\gd32_rcc_reset_port.c'),
     (Join-Path $project 'Port\gd32_exti_port.c'),
     (Join-Path $project 'Port\gd32_flash_port.c'),
     (Join-Path $project 'Port\gd32_tick_port.c'),
@@ -453,7 +521,8 @@ $phase8LinkSymbols = (& $llvmNm $phase8LinkElf | Out-String)
 foreach ($symbol in @('TargetSmoke', 'HAL_RCC_ClockConfig',
                       'HAL_EXTI_SetConfigLine', 'HAL_FLASH_Program',
                       'rcu_clock_freq_get', 'exti_init',
-                      'fmc_word_program', 'fmc_page_erase')) {
+                      'fmc_word_program', 'fmc_page_erase',
+                      'rcu_flag_get', 'rcu_all_reset_flag_clear')) {
     if ($phase8LinkSymbols -notmatch "(?m)\sT\s+$symbol\r?`$") {
         throw "RCC/EXTI/FLASH target-link symbol missing: $symbol"
     }
@@ -789,6 +858,27 @@ if ($LASTEXITCODE -ne 0) {
 & $rccHostExe
 if ($LASTEXITCODE -ne 0) {
     throw "RCC host test failed: $LASTEXITCODE"
+}
+
+$rccResetPortHostExe = Join-Path $build 'test_rcc_reset_port_host.exe'
+& $gcc -std=c11 -Wall -Wextra -Werror `
+    -Wno-unused-parameter -Wno-int-to-pointer-cast `
+    -I (Join-Path $PSScriptRoot 'ArmShims') `
+    -I (Join-Path $project 'Include') `
+    -I (Join-Path $project 'Port') `
+    -I $VendorRoot `
+    -I $vendorCmsis `
+    -I $vendorDeviceInclude `
+    -I $vendorSplInclude `
+    (Join-Path $project 'Port\gd32_rcc_reset_port.c') `
+    (Join-Path $PSScriptRoot 'test_rcc_reset_port_host.c') `
+    -o $rccResetPortHostExe
+if ($LASTEXITCODE -ne 0) {
+    throw "RCC reset Port host test build failed: $LASTEXITCODE"
+}
+& $rccResetPortHostExe
+if ($LASTEXITCODE -ne 0) {
+    throw "RCC reset Port host test failed: $LASTEXITCODE"
 }
 
 $extiHostExe = Join-Path $build 'test_exti_host.exe'

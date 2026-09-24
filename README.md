@@ -1,6 +1,6 @@
 # GD32 HAL Compatibility Layer
 
-当前版本：`0.10.3`。
+当前版本：`0.10.4`。
 
 面向 `STM32F401VEH6 HAL 应用 -> GD32F403RET6 SPL` 的源码兼容层。项目保留 HAL/Port 分层与既有状态机，并提供受严格矩阵约束的 CMSIS/Register compatibility；不复制 STM32 HAL/CMSIS，不修改官方 GD32 文件，也不为不存在的能力返回假成功。
 
@@ -14,6 +14,8 @@
 - ADC HAL polling/IT/DMA Start 统一执行目标所需的 enable、稳定等待与 calibration gate，DMA 支持严格配对的 HALFWORD/HALFWORD 和 WORD/WORD；
 - 常见 CubeMX `DMAx_Streamy + DMA_CHANNEL_n` 初始化语法可映射到 GD32 固定 Channel/request；TIMER Stream 在每次 Start 时按 Instance/event 重新验证，shared Handle 使用 active event 状态；
 - DMA Stream 寄存器、RCC/GPIO 等不等价 register overlay、32 位 TIM2/TIM5 范围及其他无安全等价功能明确失败。
+- `stm32f4xx_hal.h` 经局部 CMSIS bridge 只获取 device/CMSIS 定义，不会因工程启用 `USE_STDPERIPH_DRIVER` 而把 `gd32f403_libopt.h` 的 SPL 外设宏引入应用 TU；
+- 公共 GPIO 头自身提供 `GPIO_PIN_0..15`；RCC reset cause 只映射 PIN/POR/software/IWDGT/WWDGT/low-power 这些一一对应标志。
 
 ## 架构
 
@@ -95,9 +97,10 @@ Port/gd32_instance_map.c
 Port/gd32_tick_port.c
 Port/gd32_irq_port.c
 Port/gd32_rcc_port.c
+Port/gd32_rcc_reset_port.c
 ```
 
-同时加入官方 CMSIS system/startup、所用模块的 GD32 SPL 源文件，以及产品工程自己的 `gd32f403_libopt.h`。官方 Firmware Library 根目录不带该选择头，Demo 将它放在各应用工程内；不要从无关 Demo 盲目复制全模块配置。不要复制或修改官方库到本仓库。
+同时加入官方 CMSIS system/startup、所用模块的 GD32 SPL 源文件，以及产品工程自己的 `gd32f403_libopt.h`。官方 Firmware Library 根目录不带该选择头，Demo 将它放在各应用工程内；不要从无关 Demo 盲目复制全模块配置。兼容层各 `Port/*.c` 会显式包含自己需要的 SPL 模块头，不依赖 libopt 顺带引入。不要复制或修改官方库到本仓库。
 
 ## IRQ 示例
 
@@ -135,6 +138,7 @@ Callback 只由 `HAL_*_IRQHandler()`/DMA 收尾路径调用，Port 不绕过 HAL
 - ADC `ADON` 直接 enable 后再走 HAL Start 仍会校准；严格模式不定义直接 `SWSTART`。
 - `TIM2/TIM5` 直接 CNT/ARR/CCR 访问仍只有 16 位，不能绕过 HAL 的范围保护。
 - `GD32_HAL_I2C_GetFlags()` 在 ADDSEND pending 时不会读 STAT1；只有明确的 address-clear 路径执行 STAT0→STAT1 状态转换。
+- `__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)` 经兼容层语义令牌映射到 `RCU_FLAG_FWDGTRST/rcu_flag_get()`；`__HAL_RCC_CLEAR_RESET_FLAGS()` 调用 `rcu_all_reset_flag_clear()`，不复用两家 bit 数值。
 
 ## 自检
 

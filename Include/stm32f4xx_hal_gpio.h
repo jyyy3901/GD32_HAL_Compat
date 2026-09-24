@@ -24,7 +24,55 @@ typedef enum
     GPIO_PIN_SET
 } GPIO_PinState;
 
-/* 引脚位定义与 GD32 SPL 数值相同；保留 STM32 的 GPIO_PIN_All 拼写。 */
+/* STM32 HAL 引脚位语义；与 GD32 GPIO_PIN_x 对应位一一相同。 */
+#ifndef GPIO_PIN_0
+#define GPIO_PIN_0 ((uint16_t)0x0001U)
+#endif
+#ifndef GPIO_PIN_1
+#define GPIO_PIN_1 ((uint16_t)0x0002U)
+#endif
+#ifndef GPIO_PIN_2
+#define GPIO_PIN_2 ((uint16_t)0x0004U)
+#endif
+#ifndef GPIO_PIN_3
+#define GPIO_PIN_3 ((uint16_t)0x0008U)
+#endif
+#ifndef GPIO_PIN_4
+#define GPIO_PIN_4 ((uint16_t)0x0010U)
+#endif
+#ifndef GPIO_PIN_5
+#define GPIO_PIN_5 ((uint16_t)0x0020U)
+#endif
+#ifndef GPIO_PIN_6
+#define GPIO_PIN_6 ((uint16_t)0x0040U)
+#endif
+#ifndef GPIO_PIN_7
+#define GPIO_PIN_7 ((uint16_t)0x0080U)
+#endif
+#ifndef GPIO_PIN_8
+#define GPIO_PIN_8 ((uint16_t)0x0100U)
+#endif
+#ifndef GPIO_PIN_9
+#define GPIO_PIN_9 ((uint16_t)0x0200U)
+#endif
+#ifndef GPIO_PIN_10
+#define GPIO_PIN_10 ((uint16_t)0x0400U)
+#endif
+#ifndef GPIO_PIN_11
+#define GPIO_PIN_11 ((uint16_t)0x0800U)
+#endif
+#ifndef GPIO_PIN_12
+#define GPIO_PIN_12 ((uint16_t)0x1000U)
+#endif
+#ifndef GPIO_PIN_13
+#define GPIO_PIN_13 ((uint16_t)0x2000U)
+#endif
+#ifndef GPIO_PIN_14
+#define GPIO_PIN_14 ((uint16_t)0x4000U)
+#endif
+#ifndef GPIO_PIN_15
+#define GPIO_PIN_15 ((uint16_t)0x8000U)
+#endif
 #define GPIO_PIN_All ((uint16_t)0xFFFFU)
 #define GPIO_PIN_MASK 0x0000FFFFU
 

@@ -10,7 +10,7 @@
 
 兼容层公共头文件只允许经 `Include/stm32_hal_cmsis_bridge.h` 引入目标 device CMSIS。外设 SPL 头文件和寄存器定义只允许由 `Port/` 使用。
 
-官方 Firmware Library 的 `gd32f403.h` 在启用 SPL 时会包含 `gd32f403_libopt.h`，但库根目录不提供通用副本；该文件属于应用工程配置，不是 CMSIS/SPL 本体。本仓库只在 `Tests/ArmShims/` 保留一份测试模块选择头。
+官方 V3.0.3 `gd32f403.h` 会在未定义时自行定义 `USE_STDPERIPH_DRIVER`，随后经该宏包含 `gd32f403_libopt.h`。为保持公共 HAL 头边界，`stm32_hal_cmsis_bridge.h` 在包含 device 头期间局部屏蔽 libopt include guard，并在返回后恢复 `USE_STDPERIPH_DRIVER` 与 include guard 的原有状态。它不修改厂商文件，`Port/*.c` 则显式包含所需 SPL 头。`gd32f403_libopt.h` 属于应用工程配置，不是 CMSIS/SPL 本体；本仓库只在 `Tests/ArmShims/` 保留测试选择头。
 
 默认验证使用相邻只读目录 `../GD32F403RET6/CMSIS/`。`Tests/run_checks.ps1` 和 `Tests/run_iar_checks.ps1` 也可用 `-VendorRoot` 指向官方固件库根目录；脚本只读取厂商文件，不会复制或改写。
 

@@ -1,4 +1,7 @@
 #include "gd32_hal_port.h"
+#include "gd32f403_exti.h"
+#include "gd32f403_gpio.h"
+#include "gd32f403_rcu.h"
 #include <stddef.h>
 
 static uint32_t GD32_HAL_EXTI_Mask(uint8_t line)

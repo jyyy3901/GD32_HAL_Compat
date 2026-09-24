@@ -14,6 +14,8 @@ void TargetSmoke(void)
     clock.APB1CLKDivider = RCC_HCLK_DIV2;
     clock.APB2CLKDivider = RCC_HCLK_DIV1;
     (void)HAL_RCC_ClockConfig(&clock, FLASH_LATENCY_1);
+    (void)__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST);
+    __HAL_RCC_CLEAR_RESET_FLAGS();
     (void)HAL_EXTI_GetHandle(&exti, EXTI_LINE_2);
     exti_config.Line = EXTI_LINE_2;
     exti_config.Mode = EXTI_MODE_INTERRUPT;

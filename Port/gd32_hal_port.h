@@ -1,7 +1,7 @@
 #ifndef GD32_HAL_PORT_H
 #define GD32_HAL_PORT_H
 
-#include "gd32f403.h"
+#include "stm32_hal_cmsis_bridge.h"
 
 /*
  * 以下地址取自 GD32F403 官方设备头文件。这里有意固化为目标 Port 常量：

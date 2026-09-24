@@ -174,6 +174,7 @@ PD0/PD1 还必须先停用 HXTAL，并完成 `GPIO_PD01_REMAP` 与板级审计�
 3. `HAL_RCC_ClockConfig()` 会校验 168/168/84/168 MHz 的 SYSCLK/AHB/APB1/APB2 上限，按升频前、降频后的顺序调整 Flash wait state，并更新 Tick。
 4. LSE/LSI、RTC/备份域与新建 PLL 请求当前返回 `HAL_ERROR`，应留在原生系统时钟代码中。
 5. 不要访问 `RCC->AHB1ENR/APB1ENR/APB2ENR`。STM32 单个 AHB1ENR 的资源在 GD32 分散到 AHBEN/APB2EN，无法安全 overlay；使用 `__HAL_RCC_*_CLK_ENABLE/DISABLE()`。
+6. reset cause 可使用 `RCC_FLAG_PINRST/PORRST/SFTRST/IWDGRST/WWDGRST/LPWRRST`；兼容层把它们映射到 GD32 的 EPRST/PORRST/SWRST/FWDGTRST/WWDGTRST/LPRST。`RCC_FLAG_BORRST` 没有独立一一对应，不支持。清除使用 `__HAL_RCC_CLEAR_RESET_FLAGS()`。
 
 ## 13. EXTI 迁移
 

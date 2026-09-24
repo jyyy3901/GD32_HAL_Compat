@@ -108,6 +108,17 @@ typedef enum
     GD32_HAL_RCC_SOURCE_PLL
 } GD32_HAL_RCCSource;
 
+/* 语义令牌，不使用 STM32 RCC_CSR 或 GD32 RCU 位编码。 */
+typedef enum
+{
+    GD32_HAL_RCC_RESET_FLAG_PIN = 0,
+    GD32_HAL_RCC_RESET_FLAG_POWER,
+    GD32_HAL_RCC_RESET_FLAG_SOFTWARE,
+    GD32_HAL_RCC_RESET_FLAG_INDEPENDENT_WATCHDOG,
+    GD32_HAL_RCC_RESET_FLAG_WINDOW_WATCHDOG,
+    GD32_HAL_RCC_RESET_FLAG_LOW_POWER
+} GD32_HAL_RCCResetFlag;
+
 #define GD32_HAL_RCC_HXTAL_OFF 0U
 #define GD32_HAL_RCC_HXTAL_ON 1U
 #define GD32_HAL_RCC_HXTAL_BYPASS 2U
@@ -772,6 +783,8 @@ uint32_t GD32_HAL_RCC_GetFlashWaitState(void);
 void GD32_HAL_RCC_EnableClockMonitor(int enable);
 uint32_t GD32_HAL_RCC_GetClockMonitorInterrupt(void);
 void GD32_HAL_RCC_ClearClockMonitorInterrupt(void);
+uint32_t GD32_HAL_RCC_GetResetFlag(GD32_HAL_RCCResetFlag flag);
+void GD32_HAL_RCC_ClearResetFlags(void);
 int GD32_HAL_EXTI_Configure(uint8_t line,
                             uint32_t mode,
                             uint32_t trigger,

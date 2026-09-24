@@ -1,4 +1,5 @@
 #include "gd32_hal_port.h"
+#include "gd32f403_rcu.h"
 #include "stm32_hal_instance_map.h"
 #include <stddef.h>
 

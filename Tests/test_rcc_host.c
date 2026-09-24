@@ -17,6 +17,9 @@ static uint32_t init_tick_calls;
 static uint32_t css_callback_calls;
 static uint32_t monitor_pending;
 static uint32_t last_error;
+static GD32_HAL_RCCResetFlag last_reset_flag;
+static uint32_t reset_flag_query_result;
+static uint32_t reset_flag_clear_calls;
 static char order_log[8];
 static size_t order_length;
 
@@ -103,6 +106,12 @@ uint32_t GD32_HAL_RCC_GetFlashWaitState(void) { return flash_wait; }
 void GD32_HAL_RCC_EnableClockMonitor(int enable) { (void)enable; }
 uint32_t GD32_HAL_RCC_GetClockMonitorInterrupt(void) { return monitor_pending; }
 void GD32_HAL_RCC_ClearClockMonitorInterrupt(void) { monitor_pending = 0U; }
+uint32_t GD32_HAL_RCC_GetResetFlag(GD32_HAL_RCCResetFlag flag)
+{
+    last_reset_flag = flag;
+    return reset_flag_query_result;
+}
+void GD32_HAL_RCC_ClearResetFlags(void) { ++reset_flag_clear_calls; }
 
 void HAL_RCC_CSSCallback(void)
 {
@@ -126,6 +135,9 @@ static void reset_fixture(void)
     order_length = 0U;
     memset(order_log, 0, sizeof(order_log));
     last_error = 0U;
+    last_reset_flag = GD32_HAL_RCC_RESET_FLAG_PIN;
+    reset_flag_query_result = 0U;
+    reset_flag_clear_calls = 0U;
 }
 
 int main(void)
@@ -178,6 +190,20 @@ int main(void)
     HAL_RCC_NMI_IRQHandler();
     assert(monitor_pending == 0U);
     assert(css_callback_calls == 1U);
+
+    reset_flag_query_result = 1U;
+    assert(__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST) != 0U);
+    assert(last_reset_flag ==
+           GD32_HAL_RCC_RESET_FLAG_INDEPENDENT_WATCHDOG);
+    reset_flag_query_result = 0U;
+    assert(__HAL_RCC_GET_FLAG(RCC_FLAG_PINRST) == 0U);
+    assert(last_reset_flag == GD32_HAL_RCC_RESET_FLAG_PIN);
+    assert(RCC_FLAG_PINRST != RCC_FLAG_PORRST);
+    assert(RCC_FLAG_PORRST != RCC_FLAG_SFTRST);
+    assert(RCC_FLAG_IWDGRST != RCC_FLAG_WWDGRST);
+    assert(RCC_FLAG_WWDGRST != RCC_FLAG_LPWRRST);
+    __HAL_RCC_CLEAR_RESET_FLAGS();
+    assert(reset_flag_clear_calls == 1U);
 
     puts("RCC host tests: PASS");
     return 0;
